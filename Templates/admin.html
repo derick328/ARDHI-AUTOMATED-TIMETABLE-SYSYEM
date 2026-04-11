@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ARDHI Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <style>
+    body { background: #f5f5f5; font-family: Arial; }
+    .header { background: #fff; text-align: center; padding: 30px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header img { width: 80px; }
+    .header h2 { margin-top: 10px; color: #0066cc; font-weight: bold; }
+    .form-section { background: #fff; border-radius: 5px; margin: 30px auto; padding: 30px 20px; max-width: 98%; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .footer { text-align: center; padding: 15px 0; background: #fff; color: #666; border-top: 1px solid #ddd; }
+    #timetable-output { display: none; background: #fff; padding: 20px; border: 1px solid #ccc; margin-top: 30px; text-align: center; }
+    .document-header img { width: 80px; margin-bottom: 10px; }
+    .document-header h1 { text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+    .document-header p { margin: 3px 0; }
+    #admin-panel { display: none; margin-top: 20px; }
+    .btn-admin { margin-top: 20px; }
+    .admin-actions button { margin-right: 10px; margin-top: 10px; }
+    #user-management { display: none; margin-top: 20px; }
+    #user-management table { width: 100%; margin-top: 10px; }
+    #user-management th, td { padding: 5px; text-align: left; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <img src="ardhi.WEBP" alt="ARDHI Logo" />
+  <h2>ARDHI UNIVERSITY ADMIN DASHBOARD</h2>
+</div>
+
+<div class="container form-section">
+  <h4><strong>Timetable Management</strong></h4>
+  <hr>
+  <!-- Selection Fields -->
+  <form class="form-inline" id="downloads">
+    <div class="form-group">
+      <label for="year">Academic Year</label><br />
+      <select class="form-control" id="year">
+        <option value="">Select Year</option>
+        <option>2025/2026</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="semester">Semester</label><br />
+      <select class="form-control" id="semester"></select>
+    </div>
+    <div class="form-group">
+      <label for="type">Timetable Category</label><br />
+      <select class="form-control" id="type"></select>
+    </div>
+    <div class="form-group btn-view">
+      <br />
+      <button type="button" class="btn btn-primary" id="viewBtn">View</button>
+    </div>
+    <div class="form-group btn-download">
+      <br />
+      <button type="submit" class="btn btn-success" id="downloadBtn">Download</button>
+    </div>
+  </form>
+  <hr>
+
+  <!-- Timetable Output -->
+  <div id="timetable-output">
+    <div id="pdf-content"></div>
+  </div>
+
+  <!-- Admin Upload Button -->
+  <button class="btn btn-warning btn-admin" onclick="activateAdmin()">Enter Admin Mode</button>
+  
+  <!-- Admin Upload Panel -->
+  <div id="admin-panel">
+    <h4><strong>Admin Panel</strong></h4>
+    <div class="admin-actions">
+      <button class="btn btn-info" onclick="setUploadMode('teaching')">Upload Teaching Timetable</button>
+      <button class="btn btn-info" onclick="setUploadMode('examination')">Upload Examination Timetable</button>
+      <button class="btn btn-primary" onclick="editTimetable()">Edit/Update Timetable</button>
+      <button class="btn btn-danger" onclick="deleteTimetable()">Delete Timetable</button>
+      <button class="btn btn-success" onclick="manageUsers()">Manage Users</button>
+    </div>
+    
+    <div id="upload-section" style="margin-top:20px; display:none;">
+      <p>Upload timetable file (PDF, Image, or Excel):</p>
+      <input type="file" id="uploadFile" accept=".pdf,.png,.jpg,.jpeg,.xls,.xlsx" class="form-control" />
+    </div>
+  </div>
+
+  <!-- User Management -->
+  <div id="user-management">
+    <h4>Users</h4>
+    <table border="1" class="table table-bordered">
+      <thead>
+        <tr><th>Name</th><th>Role</th><th>Action</th></tr>
+      </thead>
+      <tbody id="user-list">
+        <tr><td>John Doe</td><td>Student</td><td><button class="btn btn-danger btn-xs" onclick="deleteUser(this)">Delete</button></td></tr>
+        <tr><td>Jane Smith</td><td>Lecturer</td><td><button class="btn btn-danger btn-xs" onclick="deleteUser(this)">Delete</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="footer">2025 © ARDHI ADMIN DASHBOARD</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  let uploadedFileURL = null;
+  let uploadedFileName = null;
+  let uploadMode = null; // teaching or examination
+
+  // Admin Activation
+  function activateAdmin() {
+    const pass = prompt("Enter Admin Passcode:");
+    if (pass === "admin123") {
+      document.getElementById("admin-panel").style.display = "block";
+      alert("Admin access granted.");
+    } else {
+      alert("Access Denied!");
+    }
+  }
+
+  // Set Upload Mode
+  function setUploadMode(mode) {
+    uploadMode = mode;
+    document.getElementById("upload-section").style.display = "block";
+    alert(`Upload mode set to ${mode.charAt(0).toUpperCase() + mode.slice(1)} Timetable.`);
+  }
+
+  // Handle Admin File Upload
+  document.getElementById("uploadFile").addEventListener("change", function (e) {
+    if (!uploadMode) {
+      alert("Select upload type first.");
+      return;
+    }
+    const file = e.target.files[0];
+    if (file) {
+      uploadedFileName = `${uploadMode}_timetable_${file.name}`;
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        uploadedFileURL = event.target.result;
+        alert(`${uploadMode.charAt(0).toUpperCase() + uploadMode.slice(1)} timetable uploaded successfully.`);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Edit/Update Timetable
+  function editTimetable() {
+    if (!uploadedFileURL) {
+      alert("No timetable uploaded to edit.");
+      return;
+    }
+    document.getElementById("upload-section").style.display = "block";
+    alert("Select a new file to replace existing timetable.");
+  }
+
+  // Delete Timetable
+  function deleteTimetable() {
+    if (confirm("Are you sure you want to delete the timetable?")) {
+      uploadedFileURL = null;
+      uploadedFileName = null;
+      document.getElementById("timetable-output").style.display = "none";
+      alert("Timetable deleted successfully.");
+    }
+  }
+
+  // Manage Users
+  function manageUsers() {
+    const um = document.getElementById("user-management");
+    um.style.display = um.style.display === "none" ? "block" : "none";
+  }
+
+  function deleteUser(btn) {
+    const row = btn.parentNode.parentNode;
+    row.parentNode.removeChild(row);
+  }
+
+  // Validate user selection
+  function validateSelection() {
+    const year = document.getElementById("year").value;
+    const semester = document.getElementById("semester").value;
+    const type = document.getElementById("type").value;
+    if (!year || semester === "Select Semester" || type === "Select Category") {
+      alert("Please select Academic Year, Semester, and Timetable Category.");
+      return false;
+    }
+    return true;
+  }
+
+  // View Timetable
+  document.getElementById("viewBtn").addEventListener("click", function () {
+    if (!validateSelection()) return;
+    if (!uploadedFileURL) {
+      alert("No timetable uploaded by admin.");
+      return;
+    }
+    const year = document.getElementById("year").value;
+    const semesterText = document.getElementById("semester").options[document.getElementById("semester").selectedIndex].text;
+    const typeText = document.getElementById("type").options[document.getElementById("type").selectedIndex].text;
+
+    const output = document.getElementById("pdf-content");
+    output.innerHTML = `
+      <div class="document-header">
+        <img src="ardhi.WEBP" alt="Logo">
+        <h1>ARDHI UNIVERSITY</h1>
+        <p><strong>Academic Year:</strong> ${year}</p>
+        <p><strong>Semester:</strong> ${semesterText}</p>
+        <p><strong>Category:</strong> ${typeText}</p>
+      </div>
+    `;
+
+    if (uploadedFileName.endsWith(".pdf")) {
+      output.innerHTML += `<embed src="${uploadedFileURL}" width="100%" height="600px" type="application/pdf">`;
+    } else {
+      output.innerHTML += `<img src="${uploadedFileURL}" style="max-width:100%;height:auto;">`;
+    }
+
+    document.getElementById("timetable-output").style.display = "block";
+  });
+
+  // Download Timetable
+  document.getElementById("downloads").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!validateSelection()) return;
+    if (!uploadedFileURL) {
+      alert("No timetable uploaded by admin.");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = uploadedFileURL;
+    a.download = uploadedFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
+
+  // Populate Select Options
+  document.addEventListener("DOMContentLoaded", function () {
+    const semesterSelect = document.getElementById('semester');
+    const typeSelect = document.getElementById('type');
+    semesterSelect.innerHTML = '<option>Select Semester</option>';
+    ["Semester One", "Semester Two"].forEach((text, i) => {
+      const opt = document.createElement('option');
+      opt.value = `semester_${i + 1}`;
+      opt.text = text;
+      semesterSelect.appendChild(opt);
+    });
+    typeSelect.innerHTML = '<option>Select Category</option>';
+    ["Teaching", "Examination"].forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.toLowerCase();
+      opt.text = cat;
+      typeSelect.appendChild(opt);
+    });
+  });
+</script>
+</body>
+</html>

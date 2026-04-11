@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ARDHI Timetable System - Lecturer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" />
+  <style>
+    body { background: #f5f5f5; font-family: Arial; }
+    .header { background: #fff; text-align: center; padding: 30px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header img { width: 80px; }
+    .header h2 { margin-top: 10px; color: #0066cc; font-weight: bold; }
+    .form-section { background: #fff; border-radius: 5px; margin: 30px auto; padding: 30px 20px; max-width: 98%; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    .footer { text-align: center; padding: 15px 0; background: #fff; color: #666; border-top: 1px solid #ddd; }
+    #timetable-output { display: none; background: #fff; padding: 20px; border: 1px solid #ccc; margin-top: 30px; text-align: center; }
+    .document-header img { width: 80px; margin-bottom: 10px; }
+    .document-header h1 { text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+    .document-header p { margin: 3px 0; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <img src="ardhi.WEBP" alt="ARDHI Logo" />
+  <h2>ARDHI UNIVERSITY TIMETABLE SYSTEM</h2>
+  <h4 style="color:#0066cc; font-weight:bold;">Role: Lecturer</h4>
+</div>
+
+<div class="container form-section">
+  <h4><strong>Lecturer Timetable</strong></h4>
+  <hr>
+
+  <form class="form-inline" id="downloads">
+    <div class="form-group">
+      <label for="year">Academic Year</label><br />
+      <select class="form-control" id="year">
+        <option value="">Select Year</option>
+        <option>2025/2026</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="semester">Semester</label><br />
+      <select class="form-control" id="semester"></select>
+    </div>
+
+    <div class="form-group">
+      <label for="type">Timetable Type</label><br />
+      <select class="form-control" id="type">
+        <option value="">Select Type</option>
+        <option value="teaching">Teaching</option>
+        <option value="examination">Examination</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="courseProgram">Course/Programme</label><br />
+      <select class="form-control" id="courseProgram">
+        <option value="">Select Course/Programme</option>
+        
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="format">Download Format</label><br />
+      <select class="form-control" id="format">
+        <option value="">Select Format</option>
+        <option value="venue">By Venue</option>
+        <option value="course">By Course</option>
+        <option value="programme">By Programme</option>
+      </select>
+    </div>
+
+    <div class="form-group btn-view">
+      <br />
+      <button type="button" class="btn btn-primary" id="viewBtn" disabled>View Timetable</button>
+    </div>
+
+    <div class="form-group btn-download">
+      <br />
+      <button type="submit" class="btn btn-success" id="downloadBtn" disabled>Download Timetable</button>
+    </div>
+
+    <div class="form-group btn-hours">
+      <br />
+      <button type="button" class="btn btn-info" id="hoursBtn">View Personal Teaching Hours</button>
+    </div>
+  </form>
+  <hr>
+
+  <div id="timetable-output">
+    <div id="pdf-content"></div>
+  </div>
+  <p id="noFileMsg" style="color:red; font-weight:bold; display:none;">Timetable not available yet.</p>
+</div>
+
+<div class="footer">2025 © ARDHI TIME TABLE</div>
+
+<script>
+let uploadedFileURL = localStorage.getItem("uploadedFileURL");
+let uploadedFileName = localStorage.getItem("uploadedFileName");
+
+document.addEventListener("DOMContentLoaded", function() {
+  const semesterSelect = document.getElementById('semester');
+  ["Semester One", "Semester Two"].forEach((text,i)=>{ let opt=document.createElement('option'); opt.value=`semester_${i+1}`; opt.text=text; semesterSelect.appendChild(opt); });
+
+  if(uploadedFileURL && uploadedFileName){
+    document.getElementById("viewBtn").disabled=false;
+    document.getElementById("downloadBtn").disabled=false;
+    document.getElementById("noFileMsg").style.display="none";
+  } else {
+    document.getElementById("viewBtn").disabled=true;
+    document.getElementById("downloadBtn").disabled=true;
+    document.getElementById("noFileMsg").style.display="block";
+  }
+});
+
+function validateSelection() {
+  const year=document.getElementById("year").value;
+  const semester=document.getElementById("semester").value;
+  const type=document.getElementById("type").value;
+  const course=document.getElementById("courseProgram").value;
+  const format=document.getElementById("format").value;
+  if(!year || semester==="Select Semester" || !type || !course || !format){ alert("Please complete all selections."); return false; }
+  return true;
+}
+
+document.getElementById("viewBtn").addEventListener("click", function(){
+  if(!validateSelection()) return;
+  const output=document.getElementById("pdf-content");
+  output.innerHTML=`<div class="document-header">
+    <img src="ardhi.WEBP" alt="Logo">
+    <h1>ARDHI UNIVERSITY</h1>
+    <p><strong>Academic Year:</strong> ${document.getElementById("year").value}</p>
+    <p><strong>Semester:</strong> ${document.getElementById("semester").selectedOptions[0].text}</p>
+    <p><strong>Type:</strong> ${document.getElementById("type").selectedOptions[0].text}</p>
+    <p><strong>Course/Programme:</strong> ${document.getElementById("courseProgram").selectedOptions[0].text}</p>
+    <p><strong>Download Format:</strong> ${document.getElementById("format").selectedOptions[0].text}</p>
+  </div>`;
+  if(uploadedFileName.endsWith(".pdf")){ output.innerHTML+=`<embed src="${uploadedFileURL}" width="100%" height="600px" type="application/pdf">`; } 
+  else{ output.innerHTML+=`<img src="${uploadedFileURL}" style="max-width:100%;height:auto;">`; }
+  document.getElementById("timetable-output").style.display="block";
+});
+
+document.getElementById("downloads").addEventListener("submit", function(e){ e.preventDefault();
+  if(!validateSelection()) return;
+  const a=document.createElement("a"); a.href=uploadedFileURL; a.download=uploadedFileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+});
+
+document.getElementById("hoursBtn").addEventListener("click", function(){ alert("Personal Teaching Hours feature coming soon!"); });
+</script>
+</body>
+</html>
