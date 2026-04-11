@@ -111,21 +111,34 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
             </div>
             <div class="card-body">
 
-              <!-- Step 1: School -->
+              <!-- Step 1: Schools (checkboxes) -->
               <div class="mb-3">
                 <label class="form-label fw-semibold">
-                  <span class="badge bg-success me-1">1</span> School
-                  <small class="text-muted fw-normal">(leave blank = all schools)</small>
+                  <span class="badge bg-success me-1">1</span> Schools
+                  <small class="text-muted fw-normal">(none checked = all schools)</small>
                 </label>
-                <select id="genSchool" class="form-select">
-                  <option value="">All Schools</option>
+                <div class="border rounded p-2" style="max-height:180px;overflow-y:auto;background:#f8f9fa">
+                  <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="chkAllSchools" checked>
+                    <label class="form-check-label fw-semibold text-success" for="chkAllSchools">
+                      <i class="bi bi-check-all"></i> All Schools
+                    </label>
+                  </div>
+                  <hr class="my-1">
                   {% for sd in schools_detail %}
-                  <option value="{{ sd.school.id }}"
-                    data-programmes='[{% for p in sd.programmes %}{"id":{{ p.id }},"label":"{{ p.code }} — {{ p.name|truncatechars:45|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
-                    {{ sd.school.name }}
-                  </option>
+                  <div class="form-check">
+                    <input class="form-check-input school-chk" type="checkbox"
+                      id="chkSchool-{{ sd.school.id }}"
+                      value="{{ sd.school.id }}"
+                      data-name="{{ sd.school.name }}"
+                      data-programmes='[{% for p in sd.programmes %}{"id":{{ p.id }},"label":"{{ p.code }} — {{ p.name|truncatechars:45|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                    <label class="form-check-label" for="chkSchool-{{ sd.school.id }}">
+                      {{ sd.school.name }}
+                      <span class="badge bg-secondary ms-1">{{ sd.programmes|length }} prog</span>
+                    </label>
+                  </div>
                   {% endfor %}
-                </select>
+                </div>
               </div>
 
               <!-- Step 2: Programme (filtered by school) -->
@@ -143,7 +156,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                   {% endfor %}
                 </select>
                 <div id="genProgrammeHint" class="form-text text-muted" style="display:none">
-                  Showing programmes for selected school only.
+                  Showing programmes for selected school(s) only.
                 </div>
               </div>
 
@@ -776,52 +789,71 @@ function handleEventDrop(info) {
   }).catch(() => info.revert());
 }
 
-// ── School → Programme cascade ────────────────────────────────────
-const genSchoolEl    = document.getElementById('genSchool');
+// ── School checkboxes → Programme cascade ─────────────────────────
+const chkAllSchools  = document.getElementById('chkAllSchools');
+const schoolChks     = Array.from(document.querySelectorAll('.school-chk'));
 const genProgEl      = document.getElementById('genProgramme');
 const genSemEl       = document.getElementById('genSemester');
 const genSummaryText = document.getElementById('genSummaryText');
 const genProgHint    = document.getElementById('genProgrammeHint');
 
-// Store all original programme options so we can restore them
-const allProgOptions = Array.from(genProgEl.querySelectorAll('option')).map(o => ({
-  value: o.value, text: o.textContent, school: o.dataset.school
+// Store all original programme options keyed by school id
+const allProgOptions = Array.from(genProgEl.querySelectorAll('option[value]')).map(o => ({
+  value: o.value, text: o.textContent.trim(), school: o.dataset.school
 }));
 
-function updateGenSummary() {
-  const schoolTxt = genSchoolEl.options[genSchoolEl.selectedIndex].text;
-  const progTxt   = genProgEl.options[genProgEl.selectedIndex].text;
-  const semTxt    = genSemEl.options[genSemEl.selectedIndex].text;
-  genSummaryText.textContent =
-    `${schoolTxt} → ${progTxt} → ${semTxt}`;
+function getCheckedSchoolIds() {
+  return schoolChks.filter(c => c.checked).map(c => c.value);
 }
 
-genSchoolEl.addEventListener('change', function() {
-  const schoolId = this.value;
-
-  // Rebuild programme dropdown
+function rebuildProgrammes() {
+  const ids = getCheckedSchoolIds();
   genProgEl.innerHTML = '<option value="">All Programmes</option>';
-  if (schoolId) {
-    // Use the data-programmes attribute from the selected school option
-    const selOpt = this.options[this.selectedIndex];
-    let progs = [];
-    try { progs = JSON.parse(selOpt.dataset.programmes || '[]'); } catch(e) {}
-    progs.forEach(p => {
-      const o = document.createElement('option');
-      o.value = p.id; o.textContent = p.label;
-      genProgEl.appendChild(o);
-    });
-    genProgHint.style.display = '';
-  } else {
-    // Restore all programmes
-    allProgOptions.filter(p => p.value).forEach(p => {
+  if (ids.length === 0) {
+    // All schools checked or none — show all programmes
+    allProgOptions.forEach(p => {
       const o = document.createElement('option');
       o.value = p.value; o.textContent = p.text; o.dataset.school = p.school;
       genProgEl.appendChild(o);
     });
     genProgHint.style.display = 'none';
+  } else {
+    // Collect programmes from all checked schools
+    const idSet = new Set(ids);
+    allProgOptions.filter(p => idSet.has(p.school)).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.value; o.textContent = p.text; o.dataset.school = p.school;
+      genProgEl.appendChild(o);
+    });
+    genProgHint.style.display = '';
   }
   updateGenSummary();
+}
+
+function updateGenSummary() {
+  const ids = getCheckedSchoolIds();
+  const schoolTxt = ids.length === 0
+    ? 'All Schools'
+    : schoolChks.filter(c => c.checked).map(c => c.dataset.name).join(', ');
+  const progTxt = genProgEl.options[genProgEl.selectedIndex]?.text || 'All Programmes';
+  const semTxt  = genSemEl.options[genSemEl.selectedIndex]?.text || 'Both Semesters';
+  genSummaryText.textContent = `${schoolTxt} → ${progTxt} → ${semTxt}`;
+}
+
+// "All Schools" master checkbox toggles all individual checkboxes
+chkAllSchools.addEventListener('change', function() {
+  schoolChks.forEach(c => { c.checked = false; c.disabled = this.checked; });
+  rebuildProgrammes();
+});
+
+// Individual school checkbox — uncheck "All Schools" if any are picked
+schoolChks.forEach(chk => {
+  chk.addEventListener('change', function() {
+    const anyChecked = schoolChks.some(c => c.checked);
+    chkAllSchools.checked = !anyChecked;
+    chkAllSchools.disabled = anyChecked;
+    rebuildProgrammes();
+  });
 });
 
 genProgEl.addEventListener('change', updateGenSummary);
@@ -829,21 +861,23 @@ genSemEl.addEventListener('change', updateGenSummary);
 
 // ── Generate ──────────────────────────────────────────────────────
 function generate(examOnly) {
-  const schoolId = genSchoolEl.value;
-  const progId   = genProgEl.value;
-  const sem      = genSemEl.value;
-  const status   = document.getElementById('genStatus');
+  const checkedIds = getCheckedSchoolIds();   // selected school ids (strings)
+  const progId     = genProgEl.value;
+  const sem        = genSemEl.value;
+  const status     = document.getElementById('genStatus');
 
-  // Collect programme_ids: if a specific programme chosen, use it;
-  // else if a school chosen, use all its programmes; else send empty (= all)
+  // Build programme_ids to send:
+  //  - specific programme selected → just that one
+  //  - schools checked, no specific programme → all programmes of those schools
+  //  - nothing checked (All Schools) → empty array (scheduler does all)
   let programme_ids = [];
   if (progId) {
     programme_ids = [parseInt(progId)];
-  } else if (schoolId) {
-    const selOpt = genSchoolEl.options[genSchoolEl.selectedIndex];
-    let progs = [];
-    try { progs = JSON.parse(selOpt.dataset.programmes || '[]'); } catch(e) {}
-    programme_ids = progs.map(p => p.id);
+  } else if (checkedIds.length > 0) {
+    const idSet = new Set(checkedIds);
+    programme_ids = allProgOptions
+      .filter(p => idSet.has(p.school))
+      .map(p => parseInt(p.value));
   }
 
   status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Running HGCSA...';
