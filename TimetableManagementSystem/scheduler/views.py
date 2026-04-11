@@ -191,14 +191,20 @@ def coordinator_view(request):
             .select_related('course', 'room', 'timeslot', 'lecturer', 'programme')
             .order_by('programme__code', 'timeslot__day', 'timeslot__start_time')
         )
+        school_total_students = sum(sc.total_count for sc in student_counts)
         schools_detail.append({
             'school': school,
             'programmes': programmes,
             'student_counts': student_counts,
+            'total_students': school_total_students,
             'courses': courses,
             'lecturers': lecturers,
             'timetable': timetable,
         })
+
+    from django.db.models import Sum
+    university_total_students = sum(sd['total_students'] for sd in schools_detail)
+    total_room_capacity = Room.objects.aggregate(total=Sum('capacity'))['total'] or 0
 
     context = {
         'programmes': Programme.objects.select_related('school').all().order_by('code'),
@@ -207,6 +213,8 @@ def coordinator_view(request):
             'programme__code', 'study_year', 'semester'
         ),
         'schools_detail': schools_detail,
+        'university_total_students': university_total_students,
+        'total_room_capacity': total_room_capacity,
     }
     return render(request, 'scheduler/coordinator.html', context)
 
