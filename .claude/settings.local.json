@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(python -c \"from scheduler.lecturer_upload import _detect_columns; print\\(_detect_columns\\(['Course Code', 'Lecture Name']\\)\\)\")",
+      "Bash(python manage.py shell -c ':*)"
+    ]
+  }
+}

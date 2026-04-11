@@ -1,95 +1,139 @@
 """
-Upload parser for Lecturers Excel file.
-Single-sheet .xlsx with columns:
-  Name, Email, Is_Full_Time
+Upload parser for Lecturer/Course-Assignment Excel file.
+Single-sheet .xlsx with 2 columns:
+  Course_Code, Lecturer_Name
 Column names are flexible — uses alias matching.
+
+For each row:
+  - Looks up Course by code (case-insensitive).
+  - Looks up Lecturer by name (case-insensitive). Creates one if not found,
+    with an auto-generated email: first.last@ardhi.ac.tz
+  - Links the course to the lecturer (course.lecturer = lecturer).
 """
+import re
 import openpyxl
-from .models import Lecturer
+from .models import Course, Lecturer
 
 COLUMN_ALIASES = {
-    'name':         ['name', 'lecturer_name', 'full_name', 'lecturer', 'staff_name'],
-    'email':        ['email', 'email_address', 'mail', 'e_mail'],
-    'is_full_time': ['is_full_time', 'full_time', 'fulltime', 'employment_type', 'type'],
+    'course_code':   ['course_code', 'code', 'course_code', 'course code', 'subject_code', 'module_code', 'coursecode'],
+    'lecturer_name': ['lecture_name', 'lecturer_name', 'lecture name', 'lecturer name',
+                      'Lecture Name', 'Lecturer Name', 'name', 'lecturer', 'staff_name', 'instructor', 'teacher'],
 }
 
 
 def _normalize(value):
-    return str(value).strip().lower().replace(' ', '_') if value else ''
+    if not value and value != 0:
+        return ''
+    # Strip, lowercase, collapse all whitespace/underscores to a single underscore
+    s = str(value).strip().lower()
+    s = re.sub(r'[\s_]+', '_', s)   # handles non-breaking spaces, tabs, etc.
+    s = re.sub(r'[^\w]', '', s)     # drop any remaining non-word chars
+    return s
 
 
 def _detect_columns(headers):
     col_map = {}
     normalized = [_normalize(h) for h in headers]
     for canonical, aliases in COLUMN_ALIASES.items():
+        norm_aliases = {_normalize(a) for a in aliases}
         for idx, h in enumerate(normalized):
-            if h in aliases:
+            if h in norm_aliases:
                 col_map[canonical] = idx
                 break
     return col_map
 
 
-def _parse_bool(value):
-    if value is None:
-        return True  # default: full-time
-    return str(value).strip().lower() in ('yes', 'true', '1', 'y', 'full_time', 'full-time')
+def _auto_email(name):
+    """Generate a placeholder email from a lecturer name."""
+    slug = re.sub(r'[^a-z0-9]+', '.', name.lower().strip()).strip('.')
+    return f"{slug}@ardhi.ac.tz"
 
 
 def parse_lecturers(file_obj):
     """
-    Parse a lecturers Excel file and create/update Lecturer records.
+    Parse a course-lecturer assignment Excel file and:
+      - Auto-create Lecturer records by name (if not already present).
+      - Link each Course to its Lecturer.
 
     Returns:
-        {'success_count': int, 'errors': [str]}
+        {'success_count': int, 'linked_count': int, 'errors': [str]}
     """
     try:
         wb = openpyxl.load_workbook(file_obj, data_only=True)
     except Exception as e:
-        return {'success_count': 0, 'errors': [f"Cannot open file: {e}"]}
+        return {'success_count': 0, 'linked_count': 0, 'errors': [f"Cannot open file: {e}"]}
 
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
-        return {'success_count': 0, 'errors': ['File is empty']}
+        return {'success_count': 0, 'linked_count': 0, 'errors': ['File is empty']}
 
     headers = rows[0]
     col_map = _detect_columns(headers)
 
-    required = ['name', 'email']
+    required = ['course_code', 'lecturer_name']
     missing = [r for r in required if r not in col_map]
     if missing:
         return {
             'success_count': 0,
+            'linked_count': 0,
             'errors': [f"Missing required columns: {missing}. Found: {list(headers)}"]
         }
 
     success_count = 0
+    linked_count = 0
     errors = []
 
     for row_idx, row in enumerate(rows[1:], start=2):
         try:
-            name = str(row[col_map['name']]).strip() if row[col_map['name']] else None
-            email_raw = row[col_map['email']]
-            email = str(email_raw).strip().lower() if email_raw else None
-            is_full_time_raw = row[col_map.get('is_full_time', -1)] if 'is_full_time' in col_map else True
+            raw_code = row[col_map['course_code']]
+            raw_name = row[col_map['lecturer_name']]
 
-            if not name or name.lower() in ('none', 'null', ''):
-                errors.append(f"Row {row_idx}: Missing lecturer name — skipped")
+            course_code = str(raw_code).strip() if raw_code else None
+            lecturer_name = str(raw_name).strip() if raw_name else None
+
+            if not course_code or course_code.lower() in ('none', 'null', ''):
+                errors.append(f"Row {row_idx}: missing course code — skipped")
+                continue
+            if not lecturer_name or lecturer_name.lower() in ('none', 'null', ''):
+                errors.append(f"Row {row_idx}: missing lecturer name — skipped")
                 continue
 
-            if not email or '@' not in email or email.lower() in ('none', 'null'):
-                errors.append(f"Row {row_idx}: Invalid email '{email}' for lecturer '{name}'")
+            # Look up course (case-insensitive)
+            try:
+                course = Course.objects.get(code__iexact=course_code)
+            except Course.DoesNotExist:
+                errors.append(f"Row {row_idx}: course '{course_code}' not found — skipped")
+                continue
+            except Course.MultipleObjectsReturned:
+                errors.append(f"Row {row_idx}: multiple courses match '{course_code}' — skipped")
                 continue
 
-            is_full_time = _parse_bool(is_full_time_raw)
+            # Look up or create lecturer by name
+            lecturer = Lecturer.objects.filter(name__iexact=lecturer_name).first()
+            if not lecturer:
+                email = _auto_email(lecturer_name)
+                # Ensure email uniqueness
+                if Lecturer.objects.filter(email=email).exists():
+                    base = email.rsplit('@', 1)[0]
+                    email = f"{base}.{row_idx}@ardhi.ac.tz"
+                lecturer = Lecturer.objects.create(
+                    name=lecturer_name,
+                    email=email,
+                    is_full_time=True,
+                )
+                success_count += 1
 
-            Lecturer.objects.update_or_create(
-                email=email,
-                defaults={'name': name, 'is_full_time': is_full_time}
-            )
-            success_count += 1
+            # Link course to lecturer
+            course.lecturer = lecturer
+            course.save(update_fields=['lecturer'])
+            linked_count += 1
 
         except Exception as e:
             errors.append(f"Row {row_idx}: Unexpected error — {e}")
 
-    return {'success_count': success_count, 'errors': errors}
+    return {
+        'success_count': success_count,
+        'linked_count': linked_count,
+        'errors': errors,
+    }

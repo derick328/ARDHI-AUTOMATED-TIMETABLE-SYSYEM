@@ -114,6 +114,15 @@ def admin_dashboard(request):
         'all_programmes': Programme.objects.select_related('school').all(),
         'all_users': User.objects.select_related('stakeholder').all(),
         'audit_logs': AuditLog.objects.select_related('user').all()[:50],
+        # Uploaded data viewer
+        'all_rooms': Room.objects.all().order_by('name'),
+        'all_lecturers': Lecturer.objects.all().order_by('name'),
+        'all_courses': Course.objects.select_related('programme', 'lecturer').order_by(
+            'programme__code', 'study_year', 'semester'
+        ),
+        'all_student_counts': StudentCount.objects.select_related('programme').order_by(
+            'programme__code', 'study_year'
+        ),
     }
     return render(request, 'scheduler/admin.html', context)
 
@@ -437,7 +446,7 @@ class UploadLecturersView(APIView):
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         result = parse_lecturers(file)
         log_action(request.user, 'UPLOAD_LECTURERS', 'Lecturer',
-                   details=f"{result['success_count']} lecturers")
+                   details=f"{result['success_count']} created, {result.get('linked_count', 0)} courses linked")
         return Response(result)
 
 
