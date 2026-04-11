@@ -99,17 +99,7 @@ def parse_lecturers(file_obj):
                 errors.append(f"Row {row_idx}: missing lecturer name — skipped")
                 continue
 
-            # Look up course (case-insensitive)
-            try:
-                course = Course.objects.get(code__iexact=course_code)
-            except Course.DoesNotExist:
-                errors.append(f"Row {row_idx}: course '{course_code}' not found — skipped")
-                continue
-            except Course.MultipleObjectsReturned:
-                errors.append(f"Row {row_idx}: multiple courses match '{course_code}' — skipped")
-                continue
-
-            # Look up or create lecturer by name
+            # Look up or create lecturer by name (always — even if course not found yet)
             lecturer = Lecturer.objects.filter(name__iexact=lecturer_name).first()
             if not lecturer:
                 email = _auto_email(lecturer_name)
@@ -124,10 +114,22 @@ def parse_lecturers(file_obj):
                 )
                 success_count += 1
 
-            # Link course to lecturer
-            course.lecturer = lecturer
-            course.save(update_fields=['lecturer'])
-            linked_count += 1
+            # Look up course and link (optional — skip if course not uploaded yet)
+            try:
+                course = Course.objects.get(code__iexact=course_code)
+                course.lecturer = lecturer
+                course.save(update_fields=['lecturer'])
+                linked_count += 1
+            except Course.DoesNotExist:
+                errors.append(
+                    f"Row {row_idx}: lecturer '{lecturer_name}' saved, "
+                    f"but course '{course_code}' not found — upload curriculum first to link"
+                )
+            except Course.MultipleObjectsReturned:
+                errors.append(
+                    f"Row {row_idx}: lecturer '{lecturer_name}' saved, "
+                    f"but multiple courses match '{course_code}' — link manually"
+                )
 
         except Exception as e:
             errors.append(f"Row {row_idx}: Unexpected error — {e}")

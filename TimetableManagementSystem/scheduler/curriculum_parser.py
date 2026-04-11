@@ -92,12 +92,58 @@ def parse_curriculum(file_obj):
     all_programmes = list(Programme.objects.select_related('school').all())
     prog_lookup = {}
     for p in all_programmes:
-        prog_lookup[p.name.lower()] = p
-        prog_lookup[p.code.lower()] = p
+        prog_lookup[p.name.lower().strip()] = p
+        prog_lookup[p.code.lower().strip()] = p
+        # Also index the bare name without the "(CODE)" suffix, e.g. "Architecture"
+        bare = re.sub(r'\s*\(.*?\)\s*$', '', p.name).strip().lower()
+        if bare:
+            prog_lookup[bare] = p
+
+    def _fuzzy(s):
+        """Strip punctuation and spaces for loose comparison: 'B.A. CDS' -> 'bacds'"""
+        return re.sub(r'[^a-z0-9]', '', s.lower())
+
+    def _match_programme(sheet):
+        key = sheet.strip().lower()
+
+        # Strip trailing year suffix, e.g. "BSc. HIP 2019" -> "BSc. HIP"
+        key_no_year = re.sub(r'\s*\b(19|20)\d{2}\b\s*$', '', key).strip()
+
+        # 1. Exact match (with and without year suffix)
+        for k in (key, key_no_year):
+            if k in prog_lookup:
+                return prog_lookup[k]
+
+        # 2. Fuzzy match: strip all punctuation/spaces, compare
+        fuzzy_key = _fuzzy(key_no_year)
+        for p in all_programmes:
+            if fuzzy_key == _fuzzy(p.code) or fuzzy_key == _fuzzy(p.name):
+                return p
+
+        # 3. Sheet name contains programme code as a word token
+        for p in all_programmes:
+            code_pat = re.escape(p.code.lower())
+            if re.search(r'(?<![a-z])' + code_pat + r'(?![a-z])', key_no_year):
+                return p
+
+        # 4. Fuzzy partial: programme code is contained in the fuzzy sheet name
+        for p in all_programmes:
+            if _fuzzy(p.code) in fuzzy_key:
+                return p
+
+        # 5. Programme name/code contains the stripped sheet name (partial)
+        for p in all_programmes:
+            if key_no_year in p.name.lower() or key_no_year in p.code.lower():
+                return p
+
+        return None
 
     total_success = 0
     all_errors = []
     sheets_processed = []
+    available_programmes = ', '.join(
+        f"'{p.code}' / '{p.name}'" for p in all_programmes
+    )
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -107,10 +153,11 @@ def parse_curriculum(file_obj):
             continue
 
         # Match sheet name to a Programme
-        programme = prog_lookup.get(sheet_name.strip().lower())
+        programme = _match_programme(sheet_name)
         if not programme:
             all_errors.append(
-                f"Sheet '{sheet_name}': no Programme found matching this name or code — skipped"
+                f"Sheet '{sheet_name}': no Programme found matching this name or code — skipped. "
+                f"Available: {available_programmes}"
             )
             continue
 
@@ -151,8 +198,8 @@ def parse_curriculum(file_obj):
                 if semester not in (1, 2):
                     all_errors.append(f"Sheet '{sheet_name}' Row {row_idx}: semester must be 1 or 2, got '{semester}'")
                     continue
-                if study_year not in (1, 2, 3, 4):
-                    all_errors.append(f"Sheet '{sheet_name}' Row {row_idx}: study_year must be 1-4, got '{study_year}'")
+                if not (1 <= study_year <= 6):
+                    all_errors.append(f"Sheet '{sheet_name}' Row {row_idx}: study_year must be 1-6, got '{study_year}'")
                     continue
 
                 Course.objects.update_or_create(
