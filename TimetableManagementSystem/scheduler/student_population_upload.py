@@ -109,7 +109,7 @@ def parse_student_populations(file_obj):
                 study_year_raw = row[col_map['study_year']]
                 study_year = _roman_to_int(study_year_raw)
 
-                if study_year not in (1, 2, 3, 4):
+                if not (1 <= study_year <= 6):
                     all_errors.append(
                         f"Sheet '{sheet_name}' Row {row_idx}: invalid study_year '{study_year_raw}' — skipped"
                     )

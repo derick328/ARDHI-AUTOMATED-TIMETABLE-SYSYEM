@@ -157,6 +157,113 @@ body {
   }
 }
 
+/* ── Admin full-page layout ───────────────────────────── */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: linear-gradient(180deg, var(--ardhi-blue-dark) 0%, #002f5f 100%);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.admin-sidebar .sidebar-logo {
+  padding: 1.25rem 1rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  text-align: center;
+}
+
+.admin-sidebar .sidebar-logo img {
+  width: 52px;
+  border-radius: 8px;
+}
+
+.admin-sidebar .sidebar-logo span {
+  display: block;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  margin-top: 0.4rem;
+  line-height: 1.3;
+}
+
+.admin-sidebar .sidebar-nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+}
+
+.admin-sidebar .nav-item a {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  color: rgba(255,255,255,0.78);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  margin-bottom: 0.25rem;
+}
+
+.admin-sidebar .nav-item a:hover,
+.admin-sidebar .nav-item a.active {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+
+.admin-sidebar .nav-item a i {
+  font-size: 1.1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.admin-sidebar .sidebar-footer {
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+
+.admin-sidebar .sidebar-footer a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255,255,255,0.65);
+  font-size: 0.82rem;
+  text-decoration: none;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-sidebar .sidebar-footer a:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.admin-main {
+  flex: 1;
+  background: var(--ardhi-bg);
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.admin-section {
+  display: none;
+}
+
+.admin-section.active {
+  display: block;
+}
+
 /* ── Extra-small button (for table row actions) ───────── */
 .btn-xs {
   padding: 0.1rem 0.35rem;

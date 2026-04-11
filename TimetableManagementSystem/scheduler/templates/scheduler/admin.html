@@ -1,540 +1,549 @@
 {% extends 'scheduler/base.html' %}
-{% load custom_filters %}
-{% block title %}Admin Dashboard — ARDHI Timetable{% endblock %}
-{% block nav_admin %}active{% endblock %}
-{% block content %}
-<div class="row">
-  <!-- Sidebar -->
-  <div class="col-lg-2 mb-3">
-    <div class="list-group sticky-top" style="top:70px">
-      <a href="#stats" class="list-group-item list-group-item-action"><i class="bi bi-bar-chart"></i> Stats</a>
-      <a href="#upload" class="list-group-item list-group-item-action"><i class="bi bi-upload"></i> Upload Data</a>
-      <a href="#uploaded-data" class="list-group-item list-group-item-action"><i class="bi bi-table"></i> Uploaded Data</a>
-      <a href="#generate" class="list-group-item list-group-item-action"><i class="bi bi-lightning"></i> Generate</a>
-      <a href="#conflicts" class="list-group-item list-group-item-action"><i class="bi bi-exclamation-triangle"></i> Conflicts</a>
-      <a href="#users" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Users</a>
-      <a href="#audit" class="list-group-item list-group-item-action"><i class="bi bi-journal-text"></i> Audit Log</a>
-    </div>
-  </div>
+{% load static %}{% load custom_filters %}
+{% block title %}Admin Dashboard — ARDHI{% endblock %}
 
-  <div class="col-lg-10">
-    <h3 class="fw-bold mb-3"><i class="bi bi-shield-fill text-primary"></i> Admin Dashboard</h3>
+{# Suppress the top navbar on the admin page #}
+{% block navbar %}{% endblock %}
 
-    <!-- Stats -->
-    <div id="stats" class="row g-3 mb-4">
-      {% for label, val, icon, color in stats_cards %}
-      <div class="col-6 col-md-3">
-        <div class="card text-white bg-{{ color }} h-100">
-          <div class="card-body d-flex align-items-center justify-content-between">
-            <div>
-              <div class="fs-4 fw-bold">{{ val }}</div>
-              <div class="small">{{ label }}</div>
-            </div>
-            <i class="bi bi-{{ icon }} fs-2 opacity-50"></i>
-          </div>
-        </div>
-      </div>
-      {% empty %}
-      {% with cards=1 %}
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-primary h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ schools }}</div><div class="small">Schools</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-success h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ programmes }}</div><div class="small">Programmes</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-info h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ courses }}</div><div class="small">Courses</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-warning h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ lecturers }}</div><div class="small">Lecturers</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-secondary h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ rooms }}</div><div class="small">Rooms</div></div>
-        </div>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="card text-white bg-dark h-100">
-          <div class="card-body"><div class="fs-4 fw-bold">{{ timetable_entries }}</div><div class="small">Timetable Entries</div></div>
-        </div>
-      </div>
-      {% endwith %}
-      {% endfor %}
+{# Take over the full body layout #}
+{% block body %}
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
+.admin-layout{display:flex;min-height:100vh}
+.admin-sidebar{
+  width:220px;min-width:220px;
+  background:linear-gradient(180deg,#004A99 0%,#002f5f 100%);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  flex-shrink:0;
+}
+.sidebar-logo{padding:1.25rem 1rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);text-align:center}
+.sidebar-logo img{width:56px;border-radius:8px;display:block;margin:0 auto}
+.sidebar-logo span{display:block;color:#fff;font-weight:700;font-size:.8rem;letter-spacing:.04em;margin-top:.4rem;line-height:1.3}
+.sidebar-nav{flex:1;padding:1rem .75rem}
+.sidebar-nav ul{list-style:none;padding:0;margin:0}
+.sidebar-nav .nav-item a{
+  display:flex;align-items:center;gap:.65rem;
+  padding:.65rem .85rem;color:rgba(255,255,255,.78);
+  border-radius:8px;font-size:.88rem;font-weight:500;
+  text-decoration:none;transition:background .15s,color .15s;
+  margin-bottom:.25rem;
+}
+.sidebar-nav .nav-item a:hover,
+.sidebar-nav .nav-item a.active{background:rgba(255,255,255,.18);color:#fff}
+.sidebar-nav .nav-item a i{font-size:1.1rem;width:20px;text-align:center}
+.sidebar-footer{padding:.75rem;border-top:1px solid rgba(255,255,255,.12)}
+.sidebar-footer .user-info{color:rgba(255,255,255,.55);font-size:.75rem;padding:.25rem .85rem .5rem}
+.sidebar-footer a{
+  display:flex;align-items:center;gap:.5rem;
+  color:rgba(255,255,255,.65);font-size:.82rem;
+  text-decoration:none;padding:.5rem .85rem;
+  border-radius:8px;transition:background .15s,color .15s;
+}
+.sidebar-footer a:hover{background:rgba(255,255,255,.1);color:#fff}
+.admin-main{flex:1;background:#f4f6fb;overflow-y:auto;padding:1.5rem;min-width:0}
+.admin-section{display:none}
+.admin-section.active{display:block}
+.btn-xs{padding:.1rem .35rem;font-size:.75rem;line-height:1.2;border-radius:4px}
+</style>
+<div class="admin-layout">
+
+  <!-- ── Left Sidebar ─────────────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <img src="{% static 'scheduler/img/ardhi.webp' %}" alt="ARDHI Logo">
+      <span>ARDHI UNIVERSITY<br><small style="font-weight:400;opacity:.75">Admin Panel</small></span>
     </div>
 
-    <!-- Upload Data -->
-    <div id="upload" class="card shadow mb-4">
-      <div class="card-header bg-primary text-white fw-bold">
-        <i class="bi bi-upload"></i> Upload Academic Data
+    <nav class="sidebar-nav">
+      <ul class="list-unstyled mb-0">
+        <li class="nav-item">
+          <a href="#" class="active" data-section="upload-items">
+            <i class="bi bi-upload"></i> Upload Items
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="uploaded-items">
+            <i class="bi bi-table"></i> Uploaded Items
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="users">
+            <i class="bi bi-people-fill"></i> Users
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div style="color:rgba(255,255,255,.55);font-size:.75rem;padding:.25rem .85rem .5rem;">
+        <i class="bi bi-person-circle"></i> {{ user.username }}
+        <span class="badge bg-warning text-dark ms-1">Admin</span>
       </div>
-      <div class="card-body">
-        <ul class="nav nav-tabs" id="uploadTabs">
-          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-rooms">Rooms</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-lecturers">Lecturers</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-curriculum">Curriculum</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-students">Student Pop.</a></li>
-          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-assignments">Assignments</a></li>
-        </ul>
-        <div class="tab-content pt-3">
-          <!-- Rooms -->
-          <div class="tab-pane fade show active" id="tab-rooms">
-            <p class="text-muted small">Single-sheet .xlsx: Programme_Code, Room_Name, Capacity, Is_Lab</p>
-            <form class="upload-form" data-url="{% url 'upload_rooms' %}">
-              {% csrf_token %}
-              <div class="input-group">
-                <input type="file" class="form-control" name="file" accept=".xlsx" required>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
-              </div>
-            </form>
-            <div class="upload-result mt-2"></div>
-          </div>
-          <!-- Lecturers -->
-          <div class="tab-pane fade" id="tab-lecturers">
-            <p class="text-muted small">Single-sheet .xlsx: <strong>Course_Code</strong>, <strong>Lecturer_Name</strong> — lecturers are auto-created by name and linked to the course.</p>
-            <form class="upload-form" data-url="{% url 'upload_lecturers' %}">
-              {% csrf_token %}
-              <div class="input-group">
-                <input type="file" class="form-control" name="file" accept=".xlsx" required>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
-              </div>
-            </form>
-            <div class="upload-result mt-2"></div>
-          </div>
-          <!-- Curriculum -->
-          <div class="tab-pane fade" id="tab-curriculum">
-            <p class="text-muted small">Multi-sheet .xlsx (one sheet per programme, sheet name = programme code/name): <strong>S/N</strong>, <strong>Course_Code</strong>, <strong>Course_Name</strong>, <strong>Study_Period</strong> — e.g. <code>Year 1:Semester 1</code></p>
-            <form class="upload-form" data-url="{% url 'upload_curriculum' %}">
-              {% csrf_token %}
-              <div class="input-group">
-                <input type="file" class="form-control" name="file" accept=".xlsx" required>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
-              </div>
-            </form>
-            <div class="upload-result mt-2"></div>
-          </div>
-          <!-- Student Populations -->
-          <div class="tab-pane fade" id="tab-students">
-            <p class="text-muted small">Multi-sheet .xlsx (one sheet per school/faculty): Programme_Code, Programme_Name, Study_Year (integer 1-4), Male_Count, Female_Count, Total_Count</p>
-            <form class="upload-form" data-url="{% url 'upload_schools' %}">
-              {% csrf_token %}
-              <div class="input-group">
-                <input type="file" class="form-control" name="file" accept=".xlsx" required>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
-              </div>
-            </form>
-            <div class="upload-result mt-2"></div>
-          </div>
-          <!-- Assignments -->
-          <div class="tab-pane fade" id="tab-assignments">
-            <p class="text-muted small">Single-sheet .xlsx: Course_Code, Lecturer_Name</p>
-            <form class="upload-form" data-url="{% url 'upload_assignments' %}">
-              {% csrf_token %}
-              <div class="input-group">
-                <input type="file" class="form-control" name="file" accept=".xlsx" required>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
-              </div>
-            </form>
-            <div class="upload-result mt-2"></div>
-          </div>
+      <a href="{% url 'logout' %}">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ──────────────────────────────────────────── -->
+  <div class="admin-main">
+
+    <!-- Stat bar (always visible) -->
+    <div class="row g-2 mb-4">
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-primary text-center py-2">
+          <div class="fs-5 fw-bold">{{ schools }}</div><div class="small">Schools</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-success text-center py-2">
+          <div class="fs-5 fw-bold">{{ programmes }}</div><div class="small">Programmes</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-info text-center py-2">
+          <div class="fs-5 fw-bold">{{ courses }}</div><div class="small">Courses</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-warning text-center py-2">
+          <div class="fs-5 fw-bold">{{ lecturers }}</div><div class="small">Lecturers</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-secondary text-center py-2">
+          <div class="fs-5 fw-bold">{{ rooms }}</div><div class="small">Rooms</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-dark text-center py-2">
+          <div class="fs-5 fw-bold">{{ timetable_entries }}</div><div class="small">Timetable Entries</div>
         </div>
       </div>
     </div>
 
-    <!-- Uploaded Data -->
-    <div id="uploaded-data" class="card shadow mb-4">
-      <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-table"></i> Uploaded Data</span>
-        <small class="opacity-75">Current database contents</small>
-      </div>
-      <div class="card-body p-0">
-        <div class="accordion accordion-flush" id="uploadedDataAccordion">
+    <!-- ══ SECTION: Upload Items ══════════════════════════════════ -->
+    <div id="section-upload-items" class="admin-section active">
+      <h4 class="fw-bold mb-3"><i class="bi bi-upload text-primary"></i> Upload Items</h4>
 
-          <!-- Rooms -->
-          <div class="accordion-item">
-            <h2 class="accordion-header d-flex align-items-center">
-              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRooms">
-                <i class="bi bi-door-open me-2"></i> Rooms
-                <span class="badge bg-secondary ms-2">{{ all_rooms|length }}</span>
-              </button>
-              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-                data-url="/api/admin/clear/rooms/" data-label="all rooms">
-                <i class="bi bi-trash"></i> Delete All
-              </button>
-            </h2>
-            <div id="collapseRooms" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
-              <div class="accordion-body p-0">
-                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Room Name</th><th>Capacity</th><th>Lab</th><th></th></tr></thead>
-                    <tbody>
-                      {% for r in all_rooms %}
-                      <tr id="room-row-{{ r.id }}">
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ r.name }}</td>
-                        <td>{{ r.capacity }}</td>
-                        <td>{% if r.is_lab %}<span class="badge bg-info">Lab</span>{% else %}<span class="badge bg-light text-dark">No</span>{% endif %}</td>
-                        <td>
-                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
-                            data-url="/api/rooms/{{ r.id }}/" data-row="room-row-{{ r.id }}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      {% empty %}
-                      <tr><td colspan="5" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
+      <!-- Upload tabs -->
+      <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white fw-bold">
+          <i class="bi bi-file-earmark-arrow-up"></i> Upload Academic Data
+        </div>
+        <div class="card-body">
+          <ul class="nav nav-tabs" id="uploadTabs">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-rooms">Rooms</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-lecturers">Lecturers</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-curriculum">Curriculum</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-students">Student Pop.</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-assignments">Assignments</a></li>
+          </ul>
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="tab-rooms">
+              <p class="text-muted small">Single-sheet .xlsx: Room_Name, Capacity, Is_Lab</p>
+              <form class="upload-form" data-url="{% url 'upload_rooms' %}">{% csrf_token %}
+                <div class="input-group">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
                 </div>
-              </div>
+              </form>
+              <div class="upload-result mt-2"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-lecturers">
+              <p class="text-muted small">Single-sheet .xlsx: <strong>Course_Code</strong>, <strong>Lecture_Name</strong> — lecturers are auto-created by name and linked to the course.</p>
+              <form class="upload-form" data-url="{% url 'upload_lecturers' %}">{% csrf_token %}
+                <div class="input-group">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+                </div>
+              </form>
+              <div class="upload-result mt-2"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-curriculum">
+              <p class="text-muted small">Multi-sheet .xlsx (one sheet per programme, sheet name = programme code/name): <strong>S/N</strong>, <strong>Course_Code</strong>, <strong>Course_Name</strong>, <strong>Study_Period</strong> — e.g. <code>Year 1:Semester 1</code></p>
+              <form class="upload-form" data-url="{% url 'upload_curriculum' %}">{% csrf_token %}
+                <div class="input-group">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+                </div>
+              </form>
+              <div class="upload-result mt-2"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-students">
+              <p class="text-muted small">Multi-sheet .xlsx (one sheet per school/faculty): Programme_Code, Programme_Name, Study_Year (1-4), Male_Count, Female_Count, Total_Count</p>
+              <form class="upload-form" data-url="{% url 'upload_schools' %}">{% csrf_token %}
+                <div class="input-group">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+                </div>
+              </form>
+              <div class="upload-result mt-2"></div>
+            </div>
+            <div class="tab-pane fade" id="tab-assignments">
+              <p class="text-muted small">Single-sheet .xlsx: Course_Code, Lecturer_Name</p>
+              <form class="upload-form" data-url="{% url 'upload_assignments' %}">{% csrf_token %}
+                <div class="input-group">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+                </div>
+              </form>
+              <div class="upload-result mt-2"></div>
             </div>
           </div>
-
-          <!-- Lecturers -->
-          <div class="accordion-item">
-            <h2 class="accordion-header d-flex align-items-center">
-              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecturers">
-                <i class="bi bi-person-badge me-2"></i> Lecturers
-                <span class="badge bg-secondary ms-2">{{ all_lecturers|length }}</span>
-              </button>
-              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-                data-url="/api/admin/clear/lecturers/" data-label="all lecturers">
-                <i class="bi bi-trash"></i> Delete All
-              </button>
-            </h2>
-            <div id="collapseLecturers" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
-              <div class="accordion-body p-0">
-                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Name</th><th>Email</th><th>Full Time</th><th></th></tr></thead>
-                    <tbody>
-                      {% for l in all_lecturers %}
-                      <tr id="lecturer-row-{{ l.id }}">
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ l.name }}</td>
-                        <td class="small text-muted">{{ l.email }}</td>
-                        <td>{% if l.is_full_time %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">Part-time</span>{% endif %}</td>
-                        <td>
-                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
-                            data-url="/api/lecturers/{{ l.id }}/" data-row="lecturer-row-{{ l.id }}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      {% empty %}
-                      <tr><td colspan="5" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Programmes -->
-          <div class="accordion-item">
-            <h2 class="accordion-header d-flex align-items-center">
-              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProgrammes">
-                <i class="bi bi-mortarboard me-2"></i> Programmes
-                <span class="badge bg-secondary ms-2">{{ all_programmes|length }}</span>
-              </button>
-              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-                data-url="/api/admin/clear/programmes/" data-label="all programmes">
-                <i class="bi bi-trash"></i> Delete All
-              </button>
-            </h2>
-            <div id="collapseProgrammes" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
-              <div class="accordion-body p-0">
-                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Name</th><th>School</th><th></th></tr></thead>
-                    <tbody>
-                      {% for p in all_programmes %}
-                      <tr id="programme-row-{{ p.id }}">
-                        <td>{{ forloop.counter }}</td>
-                        <td><strong>{{ p.code }}</strong></td>
-                        <td>{{ p.name }}</td>
-                        <td class="small text-muted">{{ p.school.name }}</td>
-                        <td>
-                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
-                            data-url="/api/programmes/{{ p.id }}/" data-row="programme-row-{{ p.id }}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      {% empty %}
-                      <tr><td colspan="5" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Courses -->
-          <div class="accordion-item">
-            <h2 class="accordion-header d-flex align-items-center">
-              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCourses">
-                <i class="bi bi-book me-2"></i> Courses
-                <span class="badge bg-secondary ms-2">{{ all_courses|length }}</span>
-              </button>
-              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-                data-url="/api/admin/clear/courses/" data-label="all courses">
-                <i class="bi bi-trash"></i> Delete All
-              </button>
-            </h2>
-            <div id="collapseCourses" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
-              <div class="accordion-body p-0">
-                <div class="table-responsive" style="max-height:350px;overflow-y:auto">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th><th></th></tr></thead>
-                    <tbody>
-                      {% for c in all_courses %}
-                      <tr id="course-row-{{ c.id }}">
-                        <td>{{ forloop.counter }}</td>
-                        <td><strong>{{ c.code }}</strong></td>
-                        <td>{{ c.title }}</td>
-                        <td class="small">{{ c.programme.code }}</td>
-                        <td>{{ c.study_year }}</td>
-                        <td>{{ c.semester }}</td>
-                        <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
-                        <td>
-                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
-                            data-url="/api/courses/{{ c.id }}/" data-row="course-row-{{ c.id }}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      {% empty %}
-                      <tr><td colspan="8" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Student Counts -->
-          <div class="accordion-item">
-            <h2 class="accordion-header d-flex align-items-center">
-              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStudents">
-                <i class="bi bi-people me-2"></i> Student Counts
-                <span class="badge bg-secondary ms-2">{{ all_student_counts|length }}</span>
-              </button>
-              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-                data-url="/api/admin/clear/student-counts/" data-label="all student counts">
-                <i class="bi bi-trash"></i> Delete All
-              </button>
-            </h2>
-            <div id="collapseStudents" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
-              <div class="accordion-body p-0">
-                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
-                  <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th><th></th></tr></thead>
-                    <tbody>
-                      {% for sc in all_student_counts %}
-                      <tr id="sc-row-{{ sc.id }}">
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ sc.programme.code }}</td>
-                        <td>{{ sc.study_year }}</td>
-                        <td>{{ sc.male_count }}</td>
-                        <td>{{ sc.female_count }}</td>
-                        <td><strong>{{ sc.total_count }}</strong></td>
-                        <td>
-                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
-                            data-url="/api/student-counts/{{ sc.id }}/" data-row="sc-row-{{ sc.id }}" title="Delete">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                      {% empty %}
-                      <tr><td colspan="7" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
-    </div>
 
-    <!-- Generate Timetable -->
-    <div id="generate" class="card shadow mb-4">
-      <div class="card-header bg-success text-white fw-bold">
-        <i class="bi bi-lightning-fill"></i> Generate Timetable (HGCSA)
+      <!-- Generate Timetable -->
+      <div class="card shadow mb-4">
+        <div class="card-header bg-success text-white fw-bold">
+          <i class="bi bi-lightning-fill"></i> Generate Timetable (HGCSA)
+        </div>
+        <div class="card-body">
+          <form id="generateForm">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Programme(s)</label>
+                <select name="programme_ids" class="form-select select2" multiple>
+                  {% for p in all_programmes %}
+                  <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+                  {% endfor %}
+                </select>
+                <div class="form-text">Leave blank to generate for ALL programmes</div>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Semester</label>
+                <select name="semester" class="form-select">
+                  <option value="">All</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Study Year(s)</label>
+                <select name="study_years" class="form-select" multiple>
+                  <option value="1">Year 1</option>
+                  <option value="2">Year 2</option>
+                  <option value="3">Year 3</option>
+                  <option value="4">Year 4</option>
+                  <option value="5">Year 5</option>
+                </select>
+              </div>
+              <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="button" id="btnGenerate" class="btn btn-success">
+                  <i class="bi bi-lightning-fill"></i> Generate Teaching
+                </button>
+                <button type="button" id="btnGenerateExam" class="btn btn-warning">
+                  <i class="bi bi-clipboard-check"></i> Generate Exam
+                </button>
+              </div>
+            </div>
+          </form>
+          <div id="generateResult" class="mt-3"></div>
+        </div>
       </div>
-      <div class="card-body">
-        <form id="generateForm">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Programme(s)</label>
-              <select name="programme_ids" class="form-select select2" multiple>
-                {% for p in all_programmes %}
-                <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+
+      <!-- Conflict Check & Export -->
+      <div class="row g-3">
+        <div class="col-md-5">
+          <div class="card shadow h-100">
+            <div class="card-header bg-warning text-dark fw-bold">
+              <i class="bi bi-exclamation-triangle-fill"></i> Conflict Check
+            </div>
+            <div class="card-body">
+              <button class="btn btn-warning w-100" id="btnCheckConflicts">
+                <i class="bi bi-search"></i> Run Conflict Check
+              </button>
+              <div id="conflictResult" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="card shadow h-100">
+            <div class="card-header bg-info text-white fw-bold">
+              <i class="bi bi-download"></i> Export Timetable
+            </div>
+            <div class="card-body d-flex flex-wrap gap-2 align-items-start">
+              <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Excel by Programme
+              </a>
+              <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Excel by Venue
+              </a>
+              <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
+              </a>
+              <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /section-upload-items -->
+
+    <!-- ══ SECTION: Uploaded Items ════════════════════════════════ -->
+    <div id="section-uploaded-items" class="admin-section">
+      <h4 class="fw-bold mb-3"><i class="bi bi-table text-primary"></i> Uploaded Items</h4>
+
+      <div class="accordion" id="uploadedDataAccordion">
+
+        <!-- Rooms -->
+        <div class="accordion-item">
+          <h2 class="accordion-header d-flex align-items-center">
+            <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRooms">
+              <i class="bi bi-door-open me-2"></i> Rooms
+              <span class="badge bg-secondary ms-2">{{ all_rooms|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+              data-url="/api/admin/clear/rooms/" data-label="all rooms">
+              <i class="bi bi-trash"></i> Delete All
+            </button>
+          </h2>
+          <div id="collapseRooms" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+            <div class="accordion-body p-0">
+              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top"><tr><th>#</th><th>Room Name</th><th>Capacity</th><th>Lab</th><th></th></tr></thead>
+                  <tbody>
+                    {% for r in all_rooms %}
+                    <tr id="room-row-{{ r.id }}">
+                      <td>{{ forloop.counter }}</td><td>{{ r.name }}</td><td>{{ r.capacity }}</td>
+                      <td>{% if r.is_lab %}<span class="badge bg-info">Lab</span>{% else %}<span class="badge bg-light text-dark">No</span>{% endif %}</td>
+                      <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/rooms/{{ r.id }}/" data-row="room-row-{{ r.id }}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lecturers -->
+        <div class="accordion-item">
+          <h2 class="accordion-header d-flex align-items-center">
+            <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecturers">
+              <i class="bi bi-person-badge me-2"></i> Lecturers
+              <span class="badge bg-secondary ms-2">{{ all_lecturers|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+              data-url="/api/admin/clear/lecturers/" data-label="all lecturers">
+              <i class="bi bi-trash"></i> Delete All
+            </button>
+          </h2>
+          <div id="collapseLecturers" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+            <div class="accordion-body p-0">
+              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top"><tr><th>#</th><th>Name</th><th>Email</th><th>Full Time</th><th></th></tr></thead>
+                  <tbody>
+                    {% for l in all_lecturers %}
+                    <tr id="lecturer-row-{{ l.id }}">
+                      <td>{{ forloop.counter }}</td><td>{{ l.name }}</td>
+                      <td class="small text-muted">{{ l.email }}</td>
+                      <td>{% if l.is_full_time %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">Part-time</span>{% endif %}</td>
+                      <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/lecturers/{{ l.id }}/" data-row="lecturer-row-{{ l.id }}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Programmes -->
+        <div class="accordion-item">
+          <h2 class="accordion-header d-flex align-items-center">
+            <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProgrammes">
+              <i class="bi bi-mortarboard me-2"></i> Programmes
+              <span class="badge bg-secondary ms-2">{{ all_programmes|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+              data-url="/api/admin/clear/programmes/" data-label="all programmes">
+              <i class="bi bi-trash"></i> Delete All
+            </button>
+          </h2>
+          <div id="collapseProgrammes" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+            <div class="accordion-body p-0">
+              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Name</th><th>School</th><th></th></tr></thead>
+                  <tbody>
+                    {% for p in all_programmes %}
+                    <tr id="programme-row-{{ p.id }}">
+                      <td>{{ forloop.counter }}</td><td><strong>{{ p.code }}</strong></td>
+                      <td>{{ p.name }}</td><td class="small text-muted">{{ p.school.name }}</td>
+                      <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/programmes/{{ p.id }}/" data-row="programme-row-{{ p.id }}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Courses -->
+        <div class="accordion-item">
+          <h2 class="accordion-header d-flex align-items-center">
+            <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCourses">
+              <i class="bi bi-book me-2"></i> Courses
+              <span class="badge bg-secondary ms-2">{{ all_courses|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+              data-url="/api/admin/clear/courses/" data-label="all courses">
+              <i class="bi bi-trash"></i> Delete All
+            </button>
+          </h2>
+          <div id="collapseCourses" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+            <div class="accordion-body p-0">
+              <div class="table-responsive" style="max-height:350px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th><th></th></tr></thead>
+                  <tbody>
+                    {% for c in all_courses %}
+                    <tr id="course-row-{{ c.id }}">
+                      <td>{{ forloop.counter }}</td><td><strong>{{ c.code }}</strong></td>
+                      <td>{{ c.title }}</td><td class="small">{{ c.programme.code }}</td>
+                      <td>{{ c.study_year }}</td><td>{{ c.semester }}</td>
+                      <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
+                      <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/courses/{{ c.id }}/" data-row="course-row-{{ c.id }}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Counts -->
+        <div class="accordion-item">
+          <h2 class="accordion-header d-flex align-items-center">
+            <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStudents">
+              <i class="bi bi-people me-2"></i> Student Counts
+              <span class="badge bg-secondary ms-2">{{ all_student_counts|length }}</span>
+            </button>
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+              data-url="/api/admin/clear/student-counts/" data-label="all student counts">
+              <i class="bi bi-trash"></i> Delete All
+            </button>
+          </h2>
+          <div id="collapseStudents" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+            <div class="accordion-body p-0">
+              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top"><tr><th>#</th><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th><th></th></tr></thead>
+                  <tbody>
+                    {% for sc in all_student_counts %}
+                    <tr id="sc-row-{{ sc.id }}">
+                      <td>{{ forloop.counter }}</td><td>{{ sc.programme.code }}</td>
+                      <td>{{ sc.study_year }}</td><td>{{ sc.male_count }}</td>
+                      <td>{{ sc.female_count }}</td><td><strong>{{ sc.total_count }}</strong></td>
+                      <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/student-counts/{{ sc.id }}/" data-row="sc-row-{{ sc.id }}"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /section-uploaded-items -->
+
+    <!-- ══ SECTION: Users ═════════════════════════════════════════ -->
+    <div id="section-users" class="admin-section">
+      <h4 class="fw-bold mb-3"><i class="bi bi-people-fill text-primary"></i> Users</h4>
+
+      <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-people-fill"></i> User Management</span>
+          <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="bi bi-person-plus"></i> Add User
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-dark">
+                <tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {% for u in all_users %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ u.username }}</td>
+                  <td>{{ u.email }}</td>
+                  <td>
+                    {% if u.is_superuser %}<span class="badge bg-danger">Admin</span>
+                    {% else %}<span class="badge bg-secondary">{{ u|get_role_display }}</span>{% endif %}
+                  </td>
+                  <td>{% if u.is_active %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
+                  <td>
+                    {% if not u.is_superuser %}
+                    <button class="btn btn-sm btn-outline-danger btn-delete-user" data-uid="{{ u.id }}" data-uname="{{ u.username }}">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted">No users found</td></tr>
                 {% endfor %}
-              </select>
-              <div class="form-text">Leave blank to generate for ALL programmes</div>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label">Semester</label>
-              <select name="semester" class="form-select">
-                <option value="">All</option>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Study Year(s)</label>
-              <select name="study_years" class="form-select" multiple>
-                <option value="1">Year 1</option>
-                <option value="2">Year 2</option>
-                <option value="3">Year 3</option>
-                <option value="4">Year 4</option>
-              </select>
-            </div>
-            <div class="col-md-3 d-flex align-items-end gap-2">
-              <button type="button" id="btnGenerate" class="btn btn-success">
-                <i class="bi bi-lightning-fill"></i> Generate Teaching
-              </button>
-              <button type="button" id="btnGenerateExam" class="btn btn-warning">
-                <i class="bi bi-clipboard-check"></i> Generate Exam
-              </button>
-            </div>
-          </div>
-        </form>
-        <div id="generateResult" class="mt-3"></div>
-      </div>
-    </div>
-
-    <!-- Conflict Check -->
-    <div id="conflicts" class="card shadow mb-4">
-      <div class="card-header bg-warning text-dark fw-bold">
-        <i class="bi bi-exclamation-triangle-fill"></i> Conflict Check
-      </div>
-      <div class="card-body">
-        <button class="btn btn-warning" id="btnCheckConflicts">
-          <i class="bi bi-search"></i> Run Conflict Check
-        </button>
-        <div id="conflictResult" class="mt-3"></div>
-      </div>
-    </div>
-
-    <!-- Download -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-info text-white fw-bold">
-        <i class="bi bi-download"></i> Export Timetable
-      </div>
-      <div class="card-body">
-        <div class="row g-2">
-          <div class="col-auto">
-            <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-outline-success">
-              <i class="bi bi-file-earmark-excel"></i> Excel by Programme
-            </a>
-          </div>
-          <div class="col-auto">
-            <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-outline-success">
-              <i class="bi bi-file-earmark-excel"></i> Excel by Venue
-            </a>
-          </div>
-          <div class="col-auto">
-            <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-outline-danger">
-              <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
-            </a>
-          </div>
-          <div class="col-auto">
-            <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-outline-danger">
-              <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
-            </a>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- User Management -->
-    <div id="users" class="card shadow mb-4">
-      <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-people-fill"></i> User Management</span>
-        <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#createUserModal">
-          <i class="bi bi-person-plus"></i> Add User
-        </button>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover table-sm mb-0">
-            <thead class="table-dark">
-              <tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {% for u in all_users %}
-              <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ u.username }}</td>
-                <td>{{ u.email }}</td>
-                <td>
-                  {% if u.is_superuser %}<span class="badge bg-danger">Admin</span>
-                  {% else %}<span class="badge bg-secondary">{{ u|get_role_display }}</span>{% endif %}
-                </td>
-                <td>{% if u.is_active %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
-                <td>
-                  {% if not u.is_superuser %}
-                  <button class="btn btn-sm btn-outline-danger btn-delete-user" data-uid="{{ u.id }}" data-uname="{{ u.username }}">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                  {% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="6" class="text-center text-muted">No users found</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+      <!-- Audit Log -->
+      <div class="card shadow">
+        <div class="card-header bg-secondary text-white fw-bold">
+          <i class="bi bi-journal-text"></i> Recent Audit Log
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+            <table class="table table-sm table-striped mb-0">
+              <thead class="table-secondary sticky-top">
+                <tr><th>Time</th><th>User</th><th>Action</th><th>Model</th><th>Details</th></tr>
+              </thead>
+              <tbody>
+                {% for log in audit_logs %}
+                <tr>
+                  <td class="small text-muted">{{ log.timestamp|date:"M d H:i" }}</td>
+                  <td>{{ log.user|default:"—" }}</td>
+                  <td><span class="badge bg-info text-dark">{{ log.action }}</span></td>
+                  <td>{{ log.target_model }}</td>
+                  <td class="small">{{ log.details|truncatechars:60 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">No audit logs yet</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </div><!-- /section-users -->
 
-    <!-- Audit Log -->
-    <div id="audit" class="card shadow mb-4">
-      <div class="card-header bg-secondary text-white fw-bold">
-        <i class="bi bi-journal-text"></i> Recent Audit Log
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive" style="max-height:300px;overflow-y:auto">
-          <table class="table table-sm table-striped mb-0">
-            <thead class="table-secondary sticky-top">
-              <tr><th>Time</th><th>User</th><th>Action</th><th>Model</th><th>Details</th></tr>
-            </thead>
-            <tbody>
-              {% for log in audit_logs %}
-              <tr>
-                <td class="small text-muted">{{ log.timestamp|date:"M d H:i" }}</td>
-                <td>{{ log.user|default:"—" }}</td>
-                <td><span class="badge bg-info text-dark">{{ log.action }}</span></td>
-                <td>{{ log.target_model }}</td>
-                <td class="small">{{ log.details|truncatechars:60 }}</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="5" class="text-center text-muted">No audit logs yet</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+  </div><!-- /admin-main -->
+</div><!-- /admin-layout -->
 
 <!-- Create User Modal -->
 <div class="modal fade" id="createUserModal" tabindex="-1">
@@ -590,11 +599,32 @@
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-// Upload forms
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+$(document).ready(function() { $('.select2').select2({ theme: 'bootstrap-5' }); });
+
+// ── Sidebar navigation ────────────────────────────────────────────
+document.querySelectorAll('.admin-sidebar .nav-item a').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const section = this.dataset.section;
+    // Update active link
+    document.querySelectorAll('.admin-sidebar .nav-item a').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    // Show the correct section
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-' + section).classList.add('active');
+  });
+});
+
+// ── Upload forms ──────────────────────────────────────────────────
 document.querySelectorAll('.upload-form').forEach(form => {
   form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -622,7 +652,7 @@ document.querySelectorAll('.upload-form').forEach(form => {
   });
 });
 
-// Generate timetable
+// ── Generate timetable ────────────────────────────────────────────
 function generateTimetable(examOnly) {
   const form = document.getElementById('generateForm');
   const progs = [...form.querySelectorAll('[name=programme_ids] option:checked')].map(o => o.value);
@@ -638,8 +668,8 @@ function generateTimetable(examOnly) {
     if (data.error) {
       resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
     } else {
-      const icon = data.is_conflict_free ? 'check-circle-fill' : 'exclamation-triangle-fill';
       const cls = data.is_conflict_free ? 'success' : 'warning';
+      const icon = data.is_conflict_free ? 'check-circle-fill' : 'exclamation-triangle-fill';
       resultDiv.innerHTML = `<div class="alert alert-${cls}">
         <i class="bi bi-${icon}"></i> <strong>${data.entries_count} entries generated.</strong>
         Conflicts: ${data.conflicts.length}. ${data.is_conflict_free ? '✅ 100% conflict-free!' : '⚠️ Please review conflicts.'}
@@ -650,7 +680,7 @@ function generateTimetable(examOnly) {
 document.getElementById('btnGenerate').onclick = () => generateTimetable(false);
 document.getElementById('btnGenerateExam').onclick = () => generateTimetable(true);
 
-// Conflict check
+// ── Conflict check ────────────────────────────────────────────────
 document.getElementById('btnCheckConflicts').addEventListener('click', function() {
   const resultDiv = document.getElementById('conflictResult');
   resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Checking...';
@@ -667,17 +697,7 @@ document.getElementById('btnCheckConflicts').addEventListener('click', function(
     });
 });
 
-// Delete user
-document.querySelectorAll('.btn-delete-user').forEach(btn => {
-  btn.addEventListener('click', function() {
-    if (!confirm(`Delete user "${this.dataset.uname}"?`)) return;
-    fetch(`/api/admin/delete-user/${this.dataset.uid}/`, {
-      method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
-    }).then(() => location.reload());
-  });
-});
-
-// ── Uploaded Data: delete single item ────────────────────────────────────────
+// ── Delete single uploaded item ───────────────────────────────────
 document.querySelectorAll('.btn-delete-item').forEach(btn => {
   btn.addEventListener('click', function() {
     if (!confirm('Delete this record? This cannot be undone.')) return;
@@ -695,24 +715,31 @@ document.querySelectorAll('.btn-delete-item').forEach(btn => {
   });
 });
 
-// ── Uploaded Data: delete all (bulk clear) ───────────────────────────────────
+// ── Bulk delete all ───────────────────────────────────────────────
 document.querySelectorAll('.btn-clear-all').forEach(btn => {
   btn.addEventListener('click', function(e) {
-    e.stopPropagation(); // prevent accordion toggle
+    e.stopPropagation();
     const label = this.dataset.label;
     const url = this.dataset.url;
     if (!confirm(`Delete ${label}? This will permanently remove all records and cannot be undone.`)) return;
     fetch(url, { method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() } })
       .then(r => r.json())
-      .then(data => {
-        alert(`Deleted ${data.deleted} record(s).`);
-        location.reload();
-      })
+      .then(data => { alert(`Deleted ${data.deleted} record(s).`); location.reload(); })
       .catch(() => alert('Error deleting records.'));
   });
 });
 
-// Create user form
+// ── Delete user ───────────────────────────────────────────────────
+document.querySelectorAll('.btn-delete-user').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm(`Delete user "${this.dataset.uname}"?`)) return;
+    fetch(`/api/admin/delete-user/${this.dataset.uid}/`, {
+      method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
+    }).then(() => location.reload());
+  });
+});
+
+// ── Create user form ──────────────────────────────────────────────
 document.getElementById('createUserForm').addEventListener('submit', function(e) {
   e.preventDefault();
   const fd = new FormData(this);
@@ -735,4 +762,4 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
   });
 });
 </script>
-{% endblock %}
+{% endblock body %}
