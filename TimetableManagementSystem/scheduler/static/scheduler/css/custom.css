@@ -157,6 +157,14 @@ body {
   }
 }
 
+/* ── Extra-small button (for table row actions) ───────── */
+.btn-xs {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  border-radius: 4px;
+}
+
 /* ── Print styles ─────────────────────────────────────── */
 @media print {
   .ardhi-navbar,

@@ -45,6 +45,13 @@ urlpatterns = [
     # ── CRUD API (ViewSets) ───────────────────────────────────────────────────────
     path('api/', include(router.urls)),
 
+    # ── Bulk Clear (Uploaded Data) ────────────────────────────────────────────────
+    path('api/admin/clear/rooms/', views.ClearRoomsView.as_view(), name='clear_rooms'),
+    path('api/admin/clear/lecturers/', views.ClearLecturersView.as_view(), name='clear_lecturers'),
+    path('api/admin/clear/courses/', views.ClearCoursesView.as_view(), name='clear_courses'),
+    path('api/admin/clear/programmes/', views.ClearProgrammesView.as_view(), name='clear_programmes'),
+    path('api/admin/clear/student-counts/', views.ClearStudentCountsView.as_view(), name='clear_student_counts'),
+
     # ── Admin User Management ─────────────────────────────────────────────────────
     path('api/admin/users/', views.ListUsersView.as_view(), name='list_users'),
     path('api/admin/register-user/', views.RegisterUserView.as_view(), name='register_user'),

@@ -159,27 +159,37 @@
 
           <!-- Rooms -->
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRooms">
+            <h2 class="accordion-header d-flex align-items-center">
+              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRooms">
                 <i class="bi bi-door-open me-2"></i> Rooms
                 <span class="badge bg-secondary ms-2">{{ all_rooms|length }}</span>
+              </button>
+              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+                data-url="/api/admin/clear/rooms/" data-label="all rooms">
+                <i class="bi bi-trash"></i> Delete All
               </button>
             </h2>
             <div id="collapseRooms" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
               <div class="accordion-body p-0">
                 <div class="table-responsive" style="max-height:300px;overflow-y:auto">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Room Name</th><th>Capacity</th><th>Lab</th></tr></thead>
+                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Room Name</th><th>Capacity</th><th>Lab</th><th></th></tr></thead>
                     <tbody>
                       {% for r in all_rooms %}
-                      <tr>
+                      <tr id="room-row-{{ r.id }}">
                         <td>{{ forloop.counter }}</td>
                         <td>{{ r.name }}</td>
                         <td>{{ r.capacity }}</td>
                         <td>{% if r.is_lab %}<span class="badge bg-info">Lab</span>{% else %}<span class="badge bg-light text-dark">No</span>{% endif %}</td>
+                        <td>
+                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
+                            data-url="/api/rooms/{{ r.id }}/" data-row="room-row-{{ r.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
                       </tr>
                       {% empty %}
-                      <tr><td colspan="4" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
+                      <tr><td colspan="5" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
@@ -190,27 +200,37 @@
 
           <!-- Lecturers -->
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecturers">
+            <h2 class="accordion-header d-flex align-items-center">
+              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLecturers">
                 <i class="bi bi-person-badge me-2"></i> Lecturers
                 <span class="badge bg-secondary ms-2">{{ all_lecturers|length }}</span>
+              </button>
+              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+                data-url="/api/admin/clear/lecturers/" data-label="all lecturers">
+                <i class="bi bi-trash"></i> Delete All
               </button>
             </h2>
             <div id="collapseLecturers" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
               <div class="accordion-body p-0">
                 <div class="table-responsive" style="max-height:300px;overflow-y:auto">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Name</th><th>Email</th><th>Full Time</th></tr></thead>
+                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Name</th><th>Email</th><th>Full Time</th><th></th></tr></thead>
                     <tbody>
                       {% for l in all_lecturers %}
-                      <tr>
+                      <tr id="lecturer-row-{{ l.id }}">
                         <td>{{ forloop.counter }}</td>
                         <td>{{ l.name }}</td>
                         <td class="small text-muted">{{ l.email }}</td>
                         <td>{% if l.is_full_time %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">Part-time</span>{% endif %}</td>
+                        <td>
+                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
+                            data-url="/api/lecturers/{{ l.id }}/" data-row="lecturer-row-{{ l.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
                       </tr>
                       {% empty %}
-                      <tr><td colspan="4" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
+                      <tr><td colspan="5" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
@@ -221,27 +241,37 @@
 
           <!-- Programmes -->
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProgrammes">
+            <h2 class="accordion-header d-flex align-items-center">
+              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProgrammes">
                 <i class="bi bi-mortarboard me-2"></i> Programmes
                 <span class="badge bg-secondary ms-2">{{ all_programmes|length }}</span>
+              </button>
+              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+                data-url="/api/admin/clear/programmes/" data-label="all programmes">
+                <i class="bi bi-trash"></i> Delete All
               </button>
             </h2>
             <div id="collapseProgrammes" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
               <div class="accordion-body p-0">
                 <div class="table-responsive" style="max-height:300px;overflow-y:auto">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Name</th><th>School</th></tr></thead>
+                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Name</th><th>School</th><th></th></tr></thead>
                     <tbody>
                       {% for p in all_programmes %}
-                      <tr>
+                      <tr id="programme-row-{{ p.id }}">
                         <td>{{ forloop.counter }}</td>
                         <td><strong>{{ p.code }}</strong></td>
                         <td>{{ p.name }}</td>
                         <td class="small text-muted">{{ p.school.name }}</td>
+                        <td>
+                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
+                            data-url="/api/programmes/{{ p.id }}/" data-row="programme-row-{{ p.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
                       </tr>
                       {% empty %}
-                      <tr><td colspan="4" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
+                      <tr><td colspan="5" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
@@ -252,20 +282,24 @@
 
           <!-- Courses -->
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCourses">
+            <h2 class="accordion-header d-flex align-items-center">
+              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCourses">
                 <i class="bi bi-book me-2"></i> Courses
                 <span class="badge bg-secondary ms-2">{{ all_courses|length }}</span>
+              </button>
+              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+                data-url="/api/admin/clear/courses/" data-label="all courses">
+                <i class="bi bi-trash"></i> Delete All
               </button>
             </h2>
             <div id="collapseCourses" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
               <div class="accordion-body p-0">
                 <div class="table-responsive" style="max-height:350px;overflow-y:auto">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th></tr></thead>
+                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th><th></th></tr></thead>
                     <tbody>
                       {% for c in all_courses %}
-                      <tr>
+                      <tr id="course-row-{{ c.id }}">
                         <td>{{ forloop.counter }}</td>
                         <td><strong>{{ c.code }}</strong></td>
                         <td>{{ c.title }}</td>
@@ -273,9 +307,15 @@
                         <td>{{ c.study_year }}</td>
                         <td>{{ c.semester }}</td>
                         <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
+                        <td>
+                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
+                            data-url="/api/courses/{{ c.id }}/" data-row="course-row-{{ c.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
                       </tr>
                       {% empty %}
-                      <tr><td colspan="7" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
+                      <tr><td colspan="8" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
@@ -286,29 +326,39 @@
 
           <!-- Student Counts -->
           <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStudents">
+            <h2 class="accordion-header d-flex align-items-center">
+              <button class="accordion-button collapsed flex-grow-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStudents">
                 <i class="bi bi-people me-2"></i> Student Counts
                 <span class="badge bg-secondary ms-2">{{ all_student_counts|length }}</span>
+              </button>
+              <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
+                data-url="/api/admin/clear/student-counts/" data-label="all student counts">
+                <i class="bi bi-trash"></i> Delete All
               </button>
             </h2>
             <div id="collapseStudents" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
               <div class="accordion-body p-0">
                 <div class="table-responsive" style="max-height:300px;overflow-y:auto">
                   <table class="table table-sm table-striped mb-0">
-                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th></tr></thead>
+                    <thead class="table-dark sticky-top"><tr><th>#</th><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th><th></th></tr></thead>
                     <tbody>
                       {% for sc in all_student_counts %}
-                      <tr>
+                      <tr id="sc-row-{{ sc.id }}">
                         <td>{{ forloop.counter }}</td>
                         <td>{{ sc.programme.code }}</td>
                         <td>{{ sc.study_year }}</td>
                         <td>{{ sc.male_count }}</td>
                         <td>{{ sc.female_count }}</td>
                         <td><strong>{{ sc.total_count }}</strong></td>
+                        <td>
+                          <button class="btn btn-xs btn-outline-danger btn-delete-item"
+                            data-url="/api/student-counts/{{ sc.id }}/" data-row="sc-row-{{ sc.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </td>
                       </tr>
                       {% empty %}
-                      <tr><td colspan="6" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
+                      <tr><td colspan="7" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
@@ -624,6 +674,41 @@ document.querySelectorAll('.btn-delete-user').forEach(btn => {
     fetch(`/api/admin/delete-user/${this.dataset.uid}/`, {
       method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
     }).then(() => location.reload());
+  });
+});
+
+// ── Uploaded Data: delete single item ────────────────────────────────────────
+document.querySelectorAll('.btn-delete-item').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm('Delete this record? This cannot be undone.')) return;
+    const url = this.dataset.url;
+    const rowId = this.dataset.row;
+    fetch(url, { method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() } })
+      .then(r => {
+        if (r.ok || r.status === 204) {
+          const row = document.getElementById(rowId);
+          if (row) row.remove();
+        } else {
+          r.json().then(d => alert('Error: ' + (d.detail || JSON.stringify(d))));
+        }
+      });
+  });
+});
+
+// ── Uploaded Data: delete all (bulk clear) ───────────────────────────────────
+document.querySelectorAll('.btn-clear-all').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation(); // prevent accordion toggle
+    const label = this.dataset.label;
+    const url = this.dataset.url;
+    if (!confirm(`Delete ${label}? This will permanently remove all records and cannot be undone.`)) return;
+    fetch(url, { method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() } })
+      .then(r => r.json())
+      .then(data => {
+        alert(`Deleted ${data.deleted} record(s).`);
+        location.reload();
+      })
+      .catch(() => alert('Error deleting records.'));
   });
 });
 

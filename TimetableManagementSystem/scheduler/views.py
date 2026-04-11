@@ -648,6 +648,45 @@ class DeleteUserView(APIView):
         return Response({'success': True})
 
 
+# ── Bulk Clear Views (Uploaded Data) ─────────────────────────────────────────────
+
+class ClearDataView(APIView):
+    """Generic bulk-delete view. Subclasses set `model` and `label`."""
+    permission_classes = [IsAdminUser]
+    model = None
+    label = 'records'
+
+    def delete(self, request):
+        count, _ = self.model.objects.all().delete()
+        log_action(request.user, f'CLEAR_{self.label.upper()}', self.label, details=f"Deleted {count} records")
+        return Response({'deleted': count})
+
+
+class ClearRoomsView(ClearDataView):
+    model = Room
+    label = 'rooms'
+
+
+class ClearLecturersView(ClearDataView):
+    model = Lecturer
+    label = 'lecturers'
+
+
+class ClearCoursesView(ClearDataView):
+    model = Course
+    label = 'courses'
+
+
+class ClearProgrammesView(ClearDataView):
+    model = Programme
+    label = 'programmes'
+
+
+class ClearStudentCountsView(ClearDataView):
+    model = StudentCount
+    label = 'studentcounts'
+
+
 # ── DRF Token Auth ────────────────────────────────────────────────────────────────
 
 class ObtainTokenView(APIView):

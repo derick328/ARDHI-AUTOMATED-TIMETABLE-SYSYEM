@@ -104,7 +104,8 @@ def parse_curriculum(file_obj):
         return re.sub(r'[^a-z0-9]', '', s.lower())
 
     def _match_programme(sheet):
-        key = sheet.strip().lower()
+        # Strip regular and non-breaking whitespace
+        key = sheet.replace('\xa0', ' ').strip().lower()
 
         # Strip trailing year suffix, e.g. "BSc. HIP 2019" -> "BSc. HIP"
         key_no_year = re.sub(r'\s*\b(19|20)\d{2}\b\s*$', '', key).strip()
@@ -161,19 +162,33 @@ def parse_curriculum(file_obj):
             )
             continue
 
-        headers = rows[0]
-        col_map = _detect_columns(headers)
+        # Find the actual header row — skip title/merged rows at the top.
+        # Scan up to the first 10 rows looking for one that contains recognisable column names.
+        header_row_idx = None
+        col_map = {}
+        for scan_idx, scan_row in enumerate(rows[:10]):
+            candidate = _detect_columns(scan_row)
+            if 'course_code' in candidate and 'course_name' in candidate:
+                header_row_idx = scan_idx
+                col_map = candidate
+                break
+
+        if header_row_idx is None:
+            # Fall back to first row so the error message is still useful
+            col_map = _detect_columns(rows[0])
 
         required = ['course_code', 'course_name', 'study_period']
         missing = [r for r in required if r not in col_map]
         if missing:
             all_errors.append(
-                f"Sheet '{sheet_name}': missing columns {missing}. Found: {list(headers)}"
+                f"Sheet '{sheet_name}': missing columns {missing}. "
+                f"Scanned first {min(10, len(rows))} rows — none contained recognisable headers. "
+                f"First row: {list(rows[0])}"
             )
             continue
 
         sheet_success = 0
-        for row_idx, row in enumerate(rows[1:], start=2):
+        for row_idx, row in enumerate(rows[header_row_idx + 1:], start=header_row_idx + 2):
             try:
                 course_code = str(row[col_map['course_code']]).strip() if row[col_map['course_code']] else None
                 course_name = str(row[col_map['course_name']]).strip() if row[col_map['course_name']] else None
