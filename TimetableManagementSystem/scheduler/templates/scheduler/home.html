@@ -1,0 +1,107 @@
+{% extends 'scheduler/base.html' %}
+{% block title %}ARDHI University — Timetable System{% endblock %}
+{% block nav_home %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-3">
+  <div class="col-lg-10">
+    <!-- Hero -->
+    <div class="card ardhi-hero-card shadow mb-4">
+      <div class="card-body text-center py-5">
+        <h1 class="display-5 fw-bold text-primary">ARDHI University</h1>
+        <h4 class="text-secondary mb-3">Automated Timetable Management System</h4>
+        <p class="lead mb-4">Academic Year 2025/2026 — Automated conflict-free scheduling for all programmes.</p>
+        <a href="{% url 'student' %}" class="btn btn-primary btn-lg me-2">
+          <i class="bi bi-calendar3"></i> Browse Timetables
+        </a>
+        {% if not user.is_authenticated %}
+        <a href="{% url 'login' %}" class="btn btn-outline-primary btn-lg">
+          <i class="bi bi-box-arrow-in-right"></i> Staff Login
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card text-center h-100 border-primary">
+          <div class="card-body">
+            <i class="bi bi-mortarboard-fill fs-2 text-primary"></i>
+            <h5 class="card-title mt-2">Programmes</h5>
+            <p class="card-text text-muted">{{ programmes|length }} active programmes</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center h-100 border-success">
+          <div class="card-body">
+            <i class="bi bi-check-circle-fill fs-2 text-success"></i>
+            <h5 class="card-title mt-2">100% Accuracy</h5>
+            <p class="card-text text-muted">Zero scheduling conflicts</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center h-100 border-info">
+          <div class="card-body">
+            <i class="bi bi-people-fill fs-2 text-info"></i>
+            <h5 class="card-title mt-2">1,000–10,000</h5>
+            <p class="card-text text-muted">Students supported</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center h-100 border-warning">
+          <div class="card-body">
+            <i class="bi bi-lightning-fill fs-2 text-warning"></i>
+            <h5 class="card-title mt-2">HGCSA Algorithm</h5>
+            <p class="card-text text-muted">5-phase hybrid scheduler</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Programme Browser -->
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-search"></i> Quick Timetable Browser
+      </div>
+      <div class="card-body">
+        <form method="get" action="{% url 'student' %}">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Programme</label>
+              <select name="programme" class="form-select select2">
+                <option value="">— Select Programme —</option>
+                {% for p in programmes %}
+                <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Study Year</label>
+              <select name="year" class="form-select">
+                <option value="">— Year —</option>
+                {% for y in "1234" %}<option value="{{ y }}">Year {{ y }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Semester</label>
+              <select name="semester" class="form-select">
+                <option value="">— Semester —</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-search"></i> View
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

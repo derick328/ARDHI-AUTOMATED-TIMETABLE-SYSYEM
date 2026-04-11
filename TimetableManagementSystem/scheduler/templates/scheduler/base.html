@@ -1,0 +1,135 @@
+{% load static %}{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>{% block title %}ARDHI Timetable System{% endblock %}</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Select2 -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="{% static 'scheduler/css/custom.css' %}" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark ardhi-navbar">
+  <div class="container-fluid">
+    <a class="navbar-brand d-flex align-items-center" href="{% url 'home' %}">
+      <img src="{% static 'scheduler/img/ardhi.webp' %}" alt="ARDHI Logo" height="40" class="me-2">
+      <span class="fw-bold">ARDHI UNIVERSITY</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link {% block nav_home %}{% endblock %}" href="{% url 'home' %}">
+            <i class="bi bi-house"></i> Home
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'student' %}">
+            <i class="bi bi-calendar3"></i> View Timetable
+          </a>
+        </li>
+        {% if user.is_authenticated %}
+          {% if user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'admin_dashboard' %}">
+              <i class="bi bi-shield-fill"></i> Admin
+            </a>
+          </li>
+          {% endif %}
+          {% if user.is_superuser or user|is_coordinator_or_admin %}
+          <li class="nav-item">
+            <a class="nav-link {% block nav_coord %}{% endblock %}" href="{% url 'coordinator' %}">
+              <i class="bi bi-grid-3x3-gap"></i> Coordinator
+            </a>
+          </li>
+          {% endif %}
+          {% if user|is_exam_officer or user.is_superuser %}
+          <li class="nav-item">
+            <a class="nav-link {% block nav_exam %}{% endblock %}" href="{% url 'exam_officer' %}">
+              <i class="bi bi-clipboard-check"></i> Exam Officer
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link {% block nav_lecturer %}{% endblock %}" href="{% url 'lecturer' %}">
+              <i class="bi bi-person-badge"></i> My Schedule
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i>
+            {{ user.username }}
+            <span class="badge bg-warning text-dark ms-1">{{ user|get_role_display }}</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+          </ul>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link btn btn-outline-light btn-sm px-3" href="{% url 'login' %}">
+            <i class="bi bi-box-arrow-in-right"></i> Login
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Messages -->
+{% if messages %}
+<div class="container-fluid mt-2">
+  {% for msg in messages %}
+  <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} alert-dismissible fade show" role="alert">
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Page content -->
+<main class="container-fluid py-3">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="ardhi-footer text-center py-3 mt-4">
+  <small>2025/2026 &copy; ARDHI University Timetable Management System</small>
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  // CSRF helper for AJAX
+  function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  }
+  $.ajaxSetup({ headers: { 'X-CSRFToken': getCsrfToken() } });
+  // Initialize Select2
+  $(document).ready(function() {
+    $('.select2').select2({ theme: 'bootstrap-5' });
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
