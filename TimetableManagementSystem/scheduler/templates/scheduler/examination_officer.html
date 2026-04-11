@@ -1,0 +1,194 @@
+{% extends 'scheduler/base.html' %}
+{% load custom_filters %}
+{% block title %}Examination Officer — ARDHI{% endblock %}
+{% block nav_exam %}active{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-11">
+    <h3 class="fw-bold mb-3"><i class="bi bi-clipboard-check text-primary"></i> Examination Officer Portal</h3>
+
+    <div class="row g-3 mb-4">
+      <!-- Generate Exam Timetable -->
+      <div class="col-md-4">
+        <div class="card shadow h-100">
+          <div class="card-header bg-warning text-dark fw-bold">
+            <i class="bi bi-lightning-fill"></i> Generate Exam Timetable
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label class="form-label">Programme</label>
+              <select id="examProgramme" class="form-select select2">
+                <option value="">All Programmes</option>
+                {% for p in programmes %}
+                <option value="{{ p.id }}">{{ p.code }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Semester</label>
+              <select id="examSemester" class="form-select">
+                <option value="">Both</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <button class="btn btn-warning w-100" id="btnGenerateExam">
+              <i class="bi bi-lightning-fill"></i> Generate Exam Schedule
+            </button>
+            <div id="genStatus" class="mt-2 small"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conflict Check -->
+      <div class="col-md-4">
+        <div class="card shadow h-100">
+          <div class="card-header bg-danger text-white fw-bold">
+            <i class="bi bi-exclamation-triangle-fill"></i> Conflict Check
+          </div>
+          <div class="card-body">
+            <p class="text-muted small">Verify no exam room conflicts and no student group conflicts.</p>
+            <button class="btn btn-danger w-100" id="btnCheckConflicts">
+              <i class="bi bi-search"></i> Check Exam Conflicts
+            </button>
+            <div id="conflictResult" class="mt-2 small"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="col-md-4">
+        <div class="card shadow h-100">
+          <div class="card-header bg-info text-white fw-bold">
+            <i class="bi bi-download"></i> Export
+          </div>
+          <div class="card-body d-grid gap-2">
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_programme&exam_only=1" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Programme
+            </a>
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_venue&exam_only=1" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Venue
+            </a>
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme&exam_only=1" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
+            </a>
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue&exam_only=1" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exam Timetable Table -->
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table"></i> Examination Timetable</span>
+        <span class="badge bg-light text-dark">{{ exam_entries|length }} exam sessions</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered mb-0">
+            <thead class="table-warning">
+              <tr>
+                <th>#</th><th>Course Code</th><th>Course Title</th>
+                <th>Room</th><th>Programme</th><th>Day</th><th>Time</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in exam_entries %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ entry.course.code }}</strong></td>
+                <td>{{ entry.course.title }}</td>
+                <td>
+                  <select class="form-select form-select-sm room-select" data-entry-id="{{ entry.id }}" style="width:auto">
+                    <option value="{{ entry.room.id }}">{{ entry.room.name }}</option>
+                    {% for r in rooms %}
+                    {% if r.id != entry.room.id %}
+                    <option value="{{ r.id }}">{{ r.name }} ({{ r.capacity }})</option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>{{ entry.programme.code }}</td>
+                <td>{{ entry.timeslot.get_day_display }}</td>
+                <td>{{ entry.timeslot|time_range }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary btn-save-room" data-entry-id="{{ entry.id }}">
+                    <i class="bi bi-floppy"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger btn-delete-entry" data-entry-id="{{ entry.id }}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="8" class="text-center text-muted py-3">No exam entries yet. Generate the exam timetable first.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Generate exam timetable
+document.getElementById('btnGenerateExam').addEventListener('click', function() {
+  const prog = document.getElementById('examProgramme').value;
+  const sem = document.getElementById('examSemester').value;
+  const status = document.getElementById('genStatus');
+  status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+  fetch('/api/timetable/generate-advanced/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ programme_ids: prog ? [prog] : [], semester: sem, exam_only: true })
+  }).then(r => r.json()).then(data => {
+    if (data.error) status.innerHTML = `<span class="text-danger">${data.error}</span>`;
+    else {
+      const ok = data.is_conflict_free;
+      status.innerHTML = `<span class="text-${ok ? 'success' : 'warning'}">${data.entries_count} exam entries. ${ok ? '✅ Conflict-free!' : '⚠️ ' + data.conflicts.length + ' conflicts'}</span>`;
+      setTimeout(() => location.reload(), 2000);
+    }
+  });
+});
+
+// Conflict check (exam only)
+document.getElementById('btnCheckConflicts').addEventListener('click', function() {
+  const r = document.getElementById('conflictResult');
+  r.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  fetch('/api/timetable/check-conflicts/?exam_only=1').then(res => res.json()).then(data => {
+    r.innerHTML = data.is_valid
+      ? '<span class="text-success">✅ Zero exam conflicts</span>'
+      : `<span class="text-danger">⚠️ ${data.total_conflicts} conflict(s) found</span>`;
+  });
+});
+
+// Save room assignment
+document.querySelectorAll('.btn-save-room').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const entryId = this.dataset.entryId;
+    const roomId = document.querySelector(`.room-select[data-entry-id="${entryId}"]`).value;
+    fetch('/api/timetable/edit/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+      body: JSON.stringify({ entry_id: entryId, room_id: roomId })
+    }).then(r => r.json()).then(() => { this.innerHTML = '<i class="bi bi-check"></i>'; });
+  });
+});
+
+// Delete entry
+document.querySelectorAll('.btn-delete-entry').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm('Delete this exam entry?')) return;
+    fetch(`/api/timetable/delete-entry/${this.dataset.entryId}/`, {
+      method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
+    }).then(() => location.reload());
+  });
+});
+</script>
+{% endblock %}

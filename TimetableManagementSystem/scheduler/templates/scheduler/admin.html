@@ -1,0 +1,478 @@
+{% extends 'scheduler/base.html' %}
+{% load custom_filters %}
+{% block title %}Admin Dashboard — ARDHI Timetable{% endblock %}
+{% block nav_admin %}active{% endblock %}
+{% block content %}
+<div class="row">
+  <!-- Sidebar -->
+  <div class="col-lg-2 mb-3">
+    <div class="list-group sticky-top" style="top:70px">
+      <a href="#stats" class="list-group-item list-group-item-action"><i class="bi bi-bar-chart"></i> Stats</a>
+      <a href="#upload" class="list-group-item list-group-item-action"><i class="bi bi-upload"></i> Upload Data</a>
+      <a href="#generate" class="list-group-item list-group-item-action"><i class="bi bi-lightning"></i> Generate</a>
+      <a href="#conflicts" class="list-group-item list-group-item-action"><i class="bi bi-exclamation-triangle"></i> Conflicts</a>
+      <a href="#users" class="list-group-item list-group-item-action"><i class="bi bi-people"></i> Users</a>
+      <a href="#audit" class="list-group-item list-group-item-action"><i class="bi bi-journal-text"></i> Audit Log</a>
+    </div>
+  </div>
+
+  <div class="col-lg-10">
+    <h3 class="fw-bold mb-3"><i class="bi bi-shield-fill text-primary"></i> Admin Dashboard</h3>
+
+    <!-- Stats -->
+    <div id="stats" class="row g-3 mb-4">
+      {% for label, val, icon, color in stats_cards %}
+      <div class="col-6 col-md-3">
+        <div class="card text-white bg-{{ color }} h-100">
+          <div class="card-body d-flex align-items-center justify-content-between">
+            <div>
+              <div class="fs-4 fw-bold">{{ val }}</div>
+              <div class="small">{{ label }}</div>
+            </div>
+            <i class="bi bi-{{ icon }} fs-2 opacity-50"></i>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      {% with cards=1 %}
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-primary h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ schools }}</div><div class="small">Schools</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-success h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ programmes }}</div><div class="small">Programmes</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-info h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ courses }}</div><div class="small">Courses</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-warning h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ lecturers }}</div><div class="small">Lecturers</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-secondary h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ rooms }}</div><div class="small">Rooms</div></div>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-white bg-dark h-100">
+          <div class="card-body"><div class="fs-4 fw-bold">{{ timetable_entries }}</div><div class="small">Timetable Entries</div></div>
+        </div>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+    <!-- Upload Data -->
+    <div id="upload" class="card shadow mb-4">
+      <div class="card-header bg-primary text-white fw-bold">
+        <i class="bi bi-upload"></i> Upload Academic Data
+      </div>
+      <div class="card-body">
+        <ul class="nav nav-tabs" id="uploadTabs">
+          <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-rooms">Rooms</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-lecturers">Lecturers</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-curriculum">Curriculum</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-students">Student Pop.</a></li>
+          <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-assignments">Assignments</a></li>
+        </ul>
+        <div class="tab-content pt-3">
+          <!-- Rooms -->
+          <div class="tab-pane fade show active" id="tab-rooms">
+            <p class="text-muted small">Single-sheet .xlsx: Programme_Code, Room_Name, Capacity, Is_Lab</p>
+            <form class="upload-form" data-url="{% url 'upload_rooms' %}">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+              </div>
+            </form>
+            <div class="upload-result mt-2"></div>
+          </div>
+          <!-- Lecturers -->
+          <div class="tab-pane fade" id="tab-lecturers">
+            <p class="text-muted small">Single-sheet .xlsx: Name, Email, Is_Full_Time</p>
+            <form class="upload-form" data-url="{% url 'upload_lecturers' %}">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+              </div>
+            </form>
+            <div class="upload-result mt-2"></div>
+          </div>
+          <!-- Curriculum -->
+          <div class="tab-pane fade" id="tab-curriculum">
+            <p class="text-muted small">Multi-sheet .xlsx (one sheet per programme): Course_Code, Course_Title, Semester, Study_Year, Is_Exam, Is_Lab</p>
+            <form class="upload-form" data-url="{% url 'upload_curriculum' %}">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+              </div>
+            </form>
+            <div class="upload-result mt-2"></div>
+          </div>
+          <!-- Student Populations -->
+          <div class="tab-pane fade" id="tab-students">
+            <p class="text-muted small">Multi-sheet .xlsx (one sheet per school/faculty): Programme_Code, Programme_Name, Study_Year (integer 1-4), Male_Count, Female_Count, Total_Count</p>
+            <form class="upload-form" data-url="{% url 'upload_schools' %}">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+              </div>
+            </form>
+            <div class="upload-result mt-2"></div>
+          </div>
+          <!-- Assignments -->
+          <div class="tab-pane fade" id="tab-assignments">
+            <p class="text-muted small">Single-sheet .xlsx: Course_Code, Lecturer_Name</p>
+            <form class="upload-form" data-url="{% url 'upload_assignments' %}">
+              {% csrf_token %}
+              <div class="input-group">
+                <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+              </div>
+            </form>
+            <div class="upload-result mt-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate Timetable -->
+    <div id="generate" class="card shadow mb-4">
+      <div class="card-header bg-success text-white fw-bold">
+        <i class="bi bi-lightning-fill"></i> Generate Timetable (HGCSA)
+      </div>
+      <div class="card-body">
+        <form id="generateForm">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Programme(s)</label>
+              <select name="programme_ids" class="form-select select2" multiple>
+                {% for p in all_programmes %}
+                <option value="{{ p.id }}">{{ p.code }} — {{ p.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Leave blank to generate for ALL programmes</div>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Semester</label>
+              <select name="semester" class="form-select">
+                <option value="">All</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Study Year(s)</label>
+              <select name="study_years" class="form-select" multiple>
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+                <option value="3">Year 3</option>
+                <option value="4">Year 4</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+              <button type="button" id="btnGenerate" class="btn btn-success">
+                <i class="bi bi-lightning-fill"></i> Generate Teaching
+              </button>
+              <button type="button" id="btnGenerateExam" class="btn btn-warning">
+                <i class="bi bi-clipboard-check"></i> Generate Exam
+              </button>
+            </div>
+          </div>
+        </form>
+        <div id="generateResult" class="mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Conflict Check -->
+    <div id="conflicts" class="card shadow mb-4">
+      <div class="card-header bg-warning text-dark fw-bold">
+        <i class="bi bi-exclamation-triangle-fill"></i> Conflict Check
+      </div>
+      <div class="card-body">
+        <button class="btn btn-warning" id="btnCheckConflicts">
+          <i class="bi bi-search"></i> Run Conflict Check
+        </button>
+        <div id="conflictResult" class="mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Download -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-info text-white fw-bold">
+        <i class="bi bi-download"></i> Export Timetable
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Programme
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Venue
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Management -->
+    <div id="users" class="card shadow mb-4">
+      <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people-fill"></i> User Management</span>
+        <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#createUserModal">
+          <i class="bi bi-person-plus"></i> Add User
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead class="table-dark">
+              <tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {% for u in all_users %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ u.username }}</td>
+                <td>{{ u.email }}</td>
+                <td>
+                  {% if u.is_superuser %}<span class="badge bg-danger">Admin</span>
+                  {% else %}<span class="badge bg-secondary">{{ u|get_role_display }}</span>{% endif %}
+                </td>
+                <td>{% if u.is_active %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle-fill text-danger"></i>{% endif %}</td>
+                <td>
+                  {% if not u.is_superuser %}
+                  <button class="btn btn-sm btn-outline-danger btn-delete-user" data-uid="{{ u.id }}" data-uname="{{ u.username }}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center text-muted">No users found</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Log -->
+    <div id="audit" class="card shadow mb-4">
+      <div class="card-header bg-secondary text-white fw-bold">
+        <i class="bi bi-journal-text"></i> Recent Audit Log
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+          <table class="table table-sm table-striped mb-0">
+            <thead class="table-secondary sticky-top">
+              <tr><th>Time</th><th>User</th><th>Action</th><th>Model</th><th>Details</th></tr>
+            </thead>
+            <tbody>
+              {% for log in audit_logs %}
+              <tr>
+                <td class="small text-muted">{{ log.timestamp|date:"M d H:i" }}</td>
+                <td>{{ log.user|default:"—" }}</td>
+                <td><span class="badge bg-info text-dark">{{ log.action }}</span></td>
+                <td>{{ log.target_model }}</td>
+                <td class="small">{{ log.details|truncatechars:60 }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted">No audit logs yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class="bi bi-person-plus"></i> Create New User</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="createUserForm">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Username *</label>
+              <input type="text" class="form-control" name="username" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-control" name="email" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">First Name</label>
+              <input type="text" class="form-control" name="first_name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Last Name</label>
+              <input type="text" class="form-control" name="last_name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Password *</label>
+              <input type="password" class="form-control" name="password" required minlength="6">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Role *</label>
+              <select class="form-select" name="role" required>
+                <option value="TTC">Coordinator (TTC)</option>
+                <option value="HOD">HOD</option>
+                <option value="EXAM">Exam Officer</option>
+                <option value="DEAN">Dean</option>
+                <option value="DUP">DUP</option>
+                <option value="ICTD">ICTD</option>
+                <option value="LECTURER">Lecturer (staff)</option>
+              </select>
+            </div>
+          </div>
+          <div id="createUserError" class="alert alert-danger mt-3 d-none"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Upload forms
+document.querySelectorAll('.upload-form').forEach(form => {
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const url = this.dataset.url;
+    const fd = new FormData(this);
+    const resultDiv = this.nextElementSibling;
+    resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Uploading...';
+    fetch(url, { method: 'POST', body: fd, headers: { 'X-CSRFToken': getCsrfToken() } })
+      .then(r => r.json())
+      .then(data => {
+        let html = `<div class="alert alert-${data.errors && data.errors.length ? 'warning' : 'success'}">`;
+        html += `<strong>${data.success_count} record(s) uploaded successfully.</strong>`;
+        if (data.sheets_processed) html += `<br>Sheets: ${data.sheets_processed.join(', ')}`;
+        if (data.errors && data.errors.length) {
+          html += `<br><strong>${data.errors.length} error(s):</strong><ul>`;
+          data.errors.slice(0, 10).forEach(e => html += `<li>${e}</li>`);
+          if (data.errors.length > 10) html += `<li>...and ${data.errors.length - 10} more</li>`;
+          html += '</ul>';
+        }
+        html += '</div>';
+        resultDiv.innerHTML = html;
+      })
+      .catch(err => resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${err}</div>`);
+  });
+});
+
+// Generate timetable
+function generateTimetable(examOnly) {
+  const form = document.getElementById('generateForm');
+  const progs = [...form.querySelectorAll('[name=programme_ids] option:checked')].map(o => o.value);
+  const sem = form.querySelector('[name=semester]').value;
+  const years = [...form.querySelectorAll('[name=study_years] option:checked')].map(o => o.value);
+  const resultDiv = document.getElementById('generateResult');
+  resultDiv.innerHTML = '<div class="spinner-border"></div> Running HGCSA (5-phase algorithm)...';
+  fetch('{% url "generate_advanced" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ programme_ids: progs, semester: sem, study_years: years, exam_only: examOnly })
+  }).then(r => r.json()).then(data => {
+    if (data.error) {
+      resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> ${data.error}</div>`;
+    } else {
+      const icon = data.is_conflict_free ? 'check-circle-fill' : 'exclamation-triangle-fill';
+      const cls = data.is_conflict_free ? 'success' : 'warning';
+      resultDiv.innerHTML = `<div class="alert alert-${cls}">
+        <i class="bi bi-${icon}"></i> <strong>${data.entries_count} entries generated.</strong>
+        Conflicts: ${data.conflicts.length}. ${data.is_conflict_free ? '✅ 100% conflict-free!' : '⚠️ Please review conflicts.'}
+      </div>`;
+    }
+  }).catch(err => resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${err}</div>`);
+}
+document.getElementById('btnGenerate').onclick = () => generateTimetable(false);
+document.getElementById('btnGenerateExam').onclick = () => generateTimetable(true);
+
+// Conflict check
+document.getElementById('btnCheckConflicts').addEventListener('click', function() {
+  const resultDiv = document.getElementById('conflictResult');
+  resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Checking...';
+  fetch('{% url "check_conflicts" %}', { headers: { 'X-CSRFToken': getCsrfToken() } })
+    .then(r => r.json()).then(data => {
+      const cls = data.is_valid ? 'success' : 'danger';
+      resultDiv.innerHTML = `<div class="alert alert-${cls}">
+        <strong>Entries checked: ${data.entries_checked}</strong><br>
+        Room conflicts: ${data.room_conflicts.length}<br>
+        Lecturer conflicts: ${data.lecturer_conflicts.length}<br>
+        Student group conflicts: ${data.student_group_conflicts.length}<br>
+        ${data.is_valid ? '✅ <strong>ZERO conflicts — 100% valid!</strong>' : '⚠️ Conflicts detected. Re-generate or resolve manually.'}
+      </div>`;
+    });
+});
+
+// Delete user
+document.querySelectorAll('.btn-delete-user').forEach(btn => {
+  btn.addEventListener('click', function() {
+    if (!confirm(`Delete user "${this.dataset.uname}"?`)) return;
+    fetch(`/api/admin/delete-user/${this.dataset.uid}/`, {
+      method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
+    }).then(() => location.reload());
+  });
+});
+
+// Create user form
+document.getElementById('createUserForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  const data = Object.fromEntries(fd.entries());
+  const errDiv = document.getElementById('createUserError');
+  errDiv.classList.add('d-none');
+  fetch('{% url "register_user" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify(data)
+  }).then(r => r.json()).then(resp => {
+    if (resp.id) {
+      bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+      location.reload();
+    } else {
+      const msgs = Object.values(resp).flat().join(', ');
+      errDiv.textContent = msgs;
+      errDiv.classList.remove('d-none');
+    }
+  });
+});
+</script>
+{% endblock %}
