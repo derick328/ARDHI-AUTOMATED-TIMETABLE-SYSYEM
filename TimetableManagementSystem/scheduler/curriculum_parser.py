@@ -19,7 +19,9 @@ COLUMN_ALIASES = {
     'sn':           ['s/n', 'sn', 'no', 'number', '#', 's_n', 'serial'],
     'course_code':  ['course_code', 'code', 'course code', 'subject_code', 'module_code', 'coursecode'],
     'course_name':  ['course_name', 'name', 'course_title', 'course title', 'title', 'subject', 'module', 'course name'],
-    'study_period': ['study_period', 'period', 'study period', 'year_semester', 'term', 'studyperiod'],
+    'study_period': ['study_period', 'period', 'study_period', 'study period', 'year_semester',
+                     'year/semester', 'year_and_semester', 'term', 'studyperiod',
+                     'study_year_semester', 'year_sem', 'year_sem_', 'period_of_study'],
 }
 
 
@@ -163,27 +165,44 @@ def parse_curriculum(file_obj):
             continue
 
         # Find the actual header row — skip title/merged rows at the top.
-        # Scan up to the first 10 rows looking for one that contains recognisable column names.
+        # Scan up to the first 10 rows; prefer a row that has ALL 3 required columns,
+        # fall back to a row with at least course_code + course_name if nothing better found.
         header_row_idx = None
         col_map = {}
+        partial_idx = None
+        partial_map = {}
         for scan_idx, scan_row in enumerate(rows[:10]):
             candidate = _detect_columns(scan_row)
-            if 'course_code' in candidate and 'course_name' in candidate:
+            has_code = 'course_code' in candidate
+            has_name = 'course_name' in candidate
+            has_period = 'study_period' in candidate
+            if has_code and has_name and has_period:
                 header_row_idx = scan_idx
                 col_map = candidate
                 break
+            if has_code and has_name and partial_idx is None:
+                partial_idx = scan_idx
+                partial_map = candidate
 
         if header_row_idx is None:
-            # Fall back to first row so the error message is still useful
-            col_map = _detect_columns(rows[0])
+            # Use best partial match if found, else row 0 for a useful error
+            if partial_idx is not None:
+                header_row_idx = partial_idx
+                col_map = partial_map
+            else:
+                col_map = _detect_columns(rows[0])
 
         required = ['course_code', 'course_name', 'study_period']
         missing = [r for r in required if r not in col_map]
         if missing:
+            # Show each of the first 5 rows so the user can see what headers are present
+            sample = '; '.join(
+                f"Row {i+1}: {[str(c) for c in rows[i] if c is not None]}"
+                for i in range(min(5, len(rows)))
+            )
             all_errors.append(
                 f"Sheet '{sheet_name}': missing columns {missing}. "
-                f"Scanned first {min(10, len(rows))} rows — none contained recognisable headers. "
-                f"First row: {list(rows[0])}"
+                f"Header scan (first 5 rows): {sample}"
             )
             continue
 
