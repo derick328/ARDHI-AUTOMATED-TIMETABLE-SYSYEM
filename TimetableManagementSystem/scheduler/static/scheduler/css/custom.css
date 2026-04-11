@@ -1,0 +1,172 @@
+/* ARDHI University Timetable System — Custom Styles */
+
+/* ── Brand Colors ─────────────────────────────────────── */
+:root {
+  --ardhi-blue: #0066CC;
+  --ardhi-blue-dark: #004A99;
+  --ardhi-gold: #F5A623;
+  --ardhi-bg: #f4f6fb;
+}
+
+body {
+  background-color: var(--ardhi-bg);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* ── Navbar ───────────────────────────────────────────── */
+.ardhi-navbar {
+  background: linear-gradient(135deg, var(--ardhi-blue-dark), var(--ardhi-blue));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ardhi-navbar .navbar-brand {
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+}
+
+/* ── Footer ───────────────────────────────────────────── */
+.ardhi-footer {
+  background: #fff;
+  border-top: 1px solid #dee2e6;
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+/* ── Login page background ────────────────────────────── */
+.ardhi-login-bg {
+  background: linear-gradient(135deg, #e8f0fe 0%, #c8dcff 100%);
+}
+
+/* ── Hero card ────────────────────────────────────────── */
+.ardhi-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #e8f4ff 100%);
+  border: none;
+  border-radius: 12px;
+}
+
+/* ── Cards ────────────────────────────────────────────── */
+.card {
+  border-radius: 8px;
+  border: none;
+}
+
+.card-header {
+  border-radius: 8px 8px 0 0 !important;
+  font-size: 0.95rem;
+}
+
+/* ── Tables ───────────────────────────────────────────── */
+.table thead th {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.table tbody td {
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+/* ── Badges ───────────────────────────────────────────── */
+.badge {
+  font-weight: 500;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn {
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.btn-primary {
+  background-color: var(--ardhi-blue);
+  border-color: var(--ardhi-blue);
+}
+
+.btn-primary:hover {
+  background-color: var(--ardhi-blue-dark);
+  border-color: var(--ardhi-blue-dark);
+}
+
+/* ── Form controls ────────────────────────────────────── */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--ardhi-blue);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.2);
+}
+
+/* ── Select2 overrides ────────────────────────────────── */
+.select2-container--bootstrap-5 .select2-selection {
+  border-color: #ced4da;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single:focus,
+.select2-container--bootstrap-5 .select2-selection--multiple:focus {
+  border-color: var(--ardhi-blue);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.2);
+}
+
+/* ── FullCalendar overrides ───────────────────────────── */
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ardhi-blue);
+}
+
+.fc .fc-button-primary {
+  background-color: var(--ardhi-blue) !important;
+  border-color: var(--ardhi-blue) !important;
+}
+
+.fc .fc-event {
+  border-radius: 4px;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+}
+
+/* ── Sticky table header in audit log ─────────────────── */
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ── Timetable table alternating rows ─────────────────── */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(0, 102, 204, 0.03);
+}
+
+/* ── Dashboard stat cards ─────────────────────────────── */
+.card.bg-primary,
+.card.bg-success,
+.card.bg-info,
+.card.bg-warning,
+.card.bg-secondary,
+.card.bg-dark {
+  border: none;
+  border-radius: 10px;
+}
+
+/* ── Responsive tweaks ────────────────────────────────── */
+@media (max-width: 768px) {
+  .ardhi-navbar .navbar-brand span {
+    font-size: 0.85rem;
+  }
+  .card-header {
+    font-size: 0.85rem;
+  }
+}
+
+/* ── Print styles ─────────────────────────────────────── */
+@media print {
+  .ardhi-navbar,
+  .ardhi-footer,
+  .btn,
+  .no-print {
+    display: none !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}

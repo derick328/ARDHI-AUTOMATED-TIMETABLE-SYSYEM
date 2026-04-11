@@ -1,0 +1,104 @@
+{% extends 'scheduler/base.html' %}
+{% load custom_filters %}
+{% block title %}Stakeholder View — ARDHI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-11">
+    <h3 class="fw-bold mb-3"><i class="bi bi-eye text-primary"></i> Stakeholder Overview</h3>
+    <p class="text-muted">Read-only view of all timetables. No editing permitted.</p>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card bg-primary text-white text-center h-100">
+          <div class="card-body">
+            <i class="bi bi-mortarboard-fill fs-2"></i>
+            <h4 class="mt-2">{{ programmes|length }}</h4>
+            <p>Programmes</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-success text-white text-center h-100">
+          <div class="card-body">
+            <i class="bi bi-calendar-check-fill fs-2"></i>
+            <h4 class="mt-2">{{ total_entries }}</h4>
+            <p>Timetable Entries</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-info text-white text-center h-100">
+          <div class="card-body">
+            <i class="bi bi-bank2 fs-2"></i>
+            <h4 class="mt-2">{{ schools|length }}</h4>
+            <p>Schools / Faculties</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-secondary text-white fw-bold">
+        <i class="bi bi-download"></i> Export Timetables
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Programme
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-excel"></i> Excel by Venue
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
+            </a>
+          </div>
+          <div class="col-auto">
+            <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-outline-danger">
+              <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schools & Programmes Table -->
+    {% for school in schools %}
+    <div class="card shadow mb-3">
+      <div class="card-header bg-dark text-white">
+        <i class="bi bi-bank2"></i> {{ school.name }} ({{ school.code }})
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-striped mb-0">
+          <thead>
+            <tr><th>Code</th><th>Programme</th><th>View Timetable</th></tr>
+          </thead>
+          <tbody>
+            {% for p in school.programmes.all %}
+            <tr>
+              <td>{{ p.code }}</td>
+              <td>{{ p.name }}</td>
+              <td>
+                <a href="{% url 'student' %}?programme={{ p.id }}&year=1&semester=1" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye"></i> View
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted">No programmes</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
