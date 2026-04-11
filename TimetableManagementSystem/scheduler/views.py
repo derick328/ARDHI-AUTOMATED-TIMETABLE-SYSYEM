@@ -169,10 +169,44 @@ def coordinator_view(request):
     if role not in ('admin', 'TTC', 'HOD'):
         messages.error(request, 'Access denied.')
         return redirect('home')
+
+    # Build per-school detail (Schools section)
+    schools_detail = []
+    for school in School.objects.all().order_by('name'):
+        programmes = list(Programme.objects.filter(school=school).order_by('code'))
+        prog_ids = [p.id for p in programmes]
+        student_counts = list(
+            StudentCount.objects.filter(programme__in=prog_ids)
+            .select_related('programme').order_by('programme__code', 'study_year')
+        )
+        courses = list(
+            Course.objects.filter(programme__in=prog_ids)
+            .select_related('programme', 'lecturer')
+            .order_by('programme__code', 'study_year', 'semester')
+        )
+        lecturer_ids = set(c.lecturer_id for c in courses if c.lecturer_id)
+        lecturers = list(Lecturer.objects.filter(id__in=lecturer_ids).order_by('name'))
+        timetable = list(
+            TimetableEntry.objects.filter(programme__in=prog_ids)
+            .select_related('course', 'room', 'timeslot', 'lecturer', 'programme')
+            .order_by('programme__code', 'timeslot__day', 'timeslot__start_time')
+        )
+        schools_detail.append({
+            'school': school,
+            'programmes': programmes,
+            'student_counts': student_counts,
+            'courses': courses,
+            'lecturers': lecturers,
+            'timetable': timetable,
+        })
+
     context = {
-        'programmes': Programme.objects.select_related('school').all(),
-        'lecturers': Lecturer.objects.all(),
-        'courses': Course.objects.select_related('programme', 'lecturer').all(),
+        'programmes': Programme.objects.select_related('school').all().order_by('code'),
+        'lecturers': Lecturer.objects.all().order_by('name'),
+        'courses': Course.objects.select_related('programme', 'lecturer').order_by(
+            'programme__code', 'study_year', 'semester'
+        ),
+        'schools_detail': schools_detail,
     }
     return render(request, 'scheduler/coordinator.html', context)
 
