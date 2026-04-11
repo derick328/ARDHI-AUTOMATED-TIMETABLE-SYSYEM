@@ -1,196 +1,563 @@
 {% extends 'scheduler/base.html' %}
-{% load custom_filters %}
+{% load static %}{% load custom_filters %}
 {% block title %}Coordinator Portal — ARDHI{% endblock %}
-{% block nav_coord %}active{% endblock %}
-{% block extra_css %}
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+
+{# Suppress the top navbar #}
+{% block navbar %}{% endblock %}
+
+{# Take over the full body layout #}
+{% block body %}
 <style>
-  #timetable-calendar { min-height: 600px; }
-  .fc-event { cursor: pointer; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
+.coord-layout{display:flex;min-height:100vh}
+.coord-sidebar{
+  width:230px;min-width:230px;
+  background:linear-gradient(180deg,#1a5276 0%,#0e2f4e 100%);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  flex-shrink:0;
+}
+.sidebar-logo{padding:1.25rem 1rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);text-align:center}
+.sidebar-logo img{width:54px;border-radius:8px;display:block;margin:0 auto}
+.sidebar-logo span{display:block;color:#fff;font-weight:700;font-size:.8rem;letter-spacing:.04em;margin-top:.4rem;line-height:1.3}
+.sidebar-nav{flex:1;padding:1rem .75rem}
+.sidebar-nav ul{list-style:none;padding:0;margin:0}
+.sidebar-nav .nav-item a{
+  display:flex;align-items:center;gap:.65rem;
+  padding:.65rem .85rem;color:rgba(255,255,255,.78);
+  border-radius:8px;font-size:.88rem;font-weight:500;
+  text-decoration:none;transition:background .15s,color .15s;
+  margin-bottom:.25rem;
+}
+.sidebar-nav .nav-item a:hover,
+.sidebar-nav .nav-item a.active{background:rgba(255,255,255,.18);color:#fff}
+.sidebar-nav .nav-item a i{font-size:1.1rem;width:20px;text-align:center}
+.sidebar-footer{padding:.75rem;border-top:1px solid rgba(255,255,255,.12)}
+.sidebar-footer .user-info{color:rgba(255,255,255,.55);font-size:.75rem;padding:.25rem .85rem .5rem}
+.sidebar-footer a{
+  display:flex;align-items:center;gap:.5rem;
+  color:rgba(255,255,255,.65);font-size:.82rem;
+  text-decoration:none;padding:.5rem .85rem;
+  border-radius:8px;transition:background .15s,color .15s;
+}
+.sidebar-footer a:hover{background:rgba(255,255,255,.1);color:#fff}
+.coord-main{flex:1;background:#f4f6fb;overflow-y:auto;padding:1.5rem;min-width:0}
+.coord-section{display:none}
+.coord-section.active{display:block}
 </style>
-{% endblock %}
-{% block content %}
-<div class="row">
-  <!-- Sidebar -->
-  <div class="col-lg-3 mb-3">
-    <div class="card shadow mb-3">
-      <div class="card-header bg-primary text-white fw-bold">
-        <i class="bi bi-funnel"></i> Filters
-      </div>
-      <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Programme</label>
-          <select id="filterProgramme" class="form-select select2">
-            <option value="">— All Programmes —</option>
-            {% for p in programmes %}
-            <option value="{{ p.id }}">{{ p.code }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Study Year</label>
-          <select id="filterYear" class="form-select">
-            <option value="">All Years</option>
-            <option value="1">Year 1</option>
-            <option value="2">Year 2</option>
-            <option value="3">Year 3</option>
-            <option value="4">Year 4</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Semester</label>
-          <select id="filterSemester" class="form-select">
-            <option value="">Both</option>
-            <option value="1">Semester 1</option>
-            <option value="2">Semester 2</option>
-          </select>
-        </div>
-        <button class="btn btn-primary w-100" id="btnLoadCalendar">
-          <i class="bi bi-arrow-repeat"></i> Load Timetable
-        </button>
-      </div>
+
+<div class="coord-layout">
+
+  <!-- ── Left Sidebar ─────────────────────────────────────────── -->
+  <aside class="coord-sidebar">
+    <div class="sidebar-logo">
+      <img src="{% static 'scheduler/img/ardhi.webp' %}" alt="ARDHI Logo">
+      <span>ARDHI UNIVERSITY<br><small style="font-weight:400;opacity:.75">Coordinator</small></span>
     </div>
 
-    <!-- Generate -->
-    <div class="card shadow mb-3">
-      <div class="card-header bg-success text-white fw-bold">
-        <i class="bi bi-lightning-fill"></i> Generate
+    <nav class="sidebar-nav">
+      <ul class="list-unstyled mb-0">
+        <li class="nav-item">
+          <a href="#" class="active" data-section="generate">
+            <i class="bi bi-lightning-fill"></i> Generate Timetable
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="conflicts">
+            <i class="bi bi-exclamation-triangle-fill"></i> Check Conflicts
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="schools">
+            <i class="bi bi-bank2"></i> School Tables
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="timetable">
+            <i class="bi bi-calendar3"></i> View Timetable
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <i class="bi bi-person-circle"></i> {{ user.username }}
+        <span class="badge bg-info text-dark ms-1">Coordinator</span>
       </div>
-      <div class="card-body">
-        <div class="mb-2">
-          <select id="genProgramme" class="form-select form-select-sm select2">
-            <option value="">All Programmes</option>
-            {% for p in programmes %}
-            <option value="{{ p.id }}">{{ p.code }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="mb-2">
-          <select id="genSemester" class="form-select form-select-sm">
-            <option value="">Both Semesters</option>
-            <option value="1">Semester 1</option>
-            <option value="2">Semester 2</option>
-          </select>
-        </div>
-        <button class="btn btn-success btn-sm w-100 mb-2" id="btnGenerate">
-          <i class="bi bi-lightning-fill"></i> Generate Teaching
-        </button>
-        <button class="btn btn-warning btn-sm w-100" id="btnGenerateExam">
-          <i class="bi bi-clipboard-check"></i> Generate Exam
-        </button>
-        <div id="genStatus" class="mt-2 small"></div>
-      </div>
+      <a href="{% url 'home' %}">
+        <i class="bi bi-house"></i> Home
+      </a>
+      <a href="{% url 'logout' %}">
+        <i class="bi bi-box-arrow-right"></i> Logout
+      </a>
     </div>
+  </aside>
 
-    <!-- Conflict Check -->
-    <div class="card shadow mb-3">
-      <div class="card-header bg-warning text-dark fw-bold">
-        <i class="bi bi-exclamation-triangle"></i> Conflicts
-      </div>
-      <div class="card-body">
-        <button class="btn btn-warning btn-sm w-100" id="btnCheckConflicts">
-          <i class="bi bi-search"></i> Check Conflicts
-        </button>
-        <div id="conflictStatus" class="mt-2 small"></div>
-      </div>
-    </div>
+  <!-- ── Main Content ──────────────────────────────────────────── -->
+  <div class="coord-main">
 
-    <!-- Export -->
-    <div class="card shadow">
-      <div class="card-header bg-info text-white fw-bold">
-        <i class="bi bi-download"></i> Export
-      </div>
-      <div class="card-body d-grid gap-2">
-        <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-sm btn-outline-success">
-          <i class="bi bi-file-earmark-excel"></i> Excel by Programme
-        </a>
-        <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-sm btn-outline-success">
-          <i class="bi bi-file-earmark-excel"></i> Excel by Venue
-        </a>
-        <a href="{% url 'download_timetable' %}?format=excel&type=by_lecturer" class="btn btn-sm btn-outline-success">
-          <i class="bi bi-file-earmark-excel"></i> Excel by Lecturer
-        </a>
-        <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-sm btn-outline-danger">
-          <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
-        </a>
-        <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-sm btn-outline-danger">
-          <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
-        </a>
-      </div>
-    </div>
-  </div>
+    <!-- ══ SECTION: Generate Timetable ══════════════════════════ -->
+    <div id="section-generate" class="coord-section active">
+      <h4 class="fw-bold mb-4"><i class="bi bi-lightning-fill text-success"></i> Generate Timetable</h4>
 
-  <!-- Main Content -->
-  <div class="col-lg-9">
-    <h3 class="fw-bold mb-3"><i class="bi bi-grid-3x3-gap text-primary"></i> Coordinator Portal</h3>
-
-    <!-- Timetable Grid (FullCalendar) -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-primary text-white fw-bold">
-        <i class="bi bi-calendar-week"></i> Timetable Grid
-        <small class="ms-2 opacity-75">(Drag events to reschedule)</small>
-      </div>
-      <div class="card-body">
-        <div id="timetable-calendar"></div>
-      </div>
-    </div>
-
-    <!-- Course-Lecturer Assignments -->
-    <div class="card shadow">
-      <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between">
-        <span><i class="bi bi-link-45deg"></i> Course-Lecturer Assignments</span>
-        <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#assignSection">
-          <i class="bi bi-chevron-down"></i>
-        </button>
-      </div>
-      <div class="collapse" id="assignSection">
-        <div class="card-body">
-          <p class="text-muted small">Assign lecturers to courses one at a time, or upload in bulk.</p>
-          <div class="row g-3">
-            <div class="col-md-5">
-              <label class="form-label">Course</label>
-              <select id="assignCourse" class="form-select select2">
-                <option value="">— Select Course —</option>
-                {% for c in courses %}
-                <option value="{{ c.id }}" data-current="{{ c.lecturer.name|default:'' }}">
-                  {{ c.code }} — {{ c.title|truncatechars:40 }}
-                </option>
-                {% endfor %}
-              </select>
+      <div class="row g-4">
+        <!-- Generate card -->
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white fw-bold">
+              <i class="bi bi-cpu"></i> Run Scheduler (HGCSA)
             </div>
-            <div class="col-md-5">
-              <label class="form-label">Lecturer</label>
-              <select id="assignLecturer" class="form-select select2">
-                <option value="">— Select Lecturer —</option>
-                {% for l in lecturers %}
-                <option value="{{ l.id }}">{{ l.name }}</option>
-                {% endfor %}
-              </select>
+            <div class="card-body">
+
+              <!-- Step 1: School -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <span class="badge bg-success me-1">1</span> School
+                  <small class="text-muted fw-normal">(leave blank = all schools)</small>
+                </label>
+                <select id="genSchool" class="form-select">
+                  <option value="">All Schools</option>
+                  {% for sd in schools_detail %}
+                  <option value="{{ sd.school.id }}"
+                    data-programmes='[{% for p in sd.programmes %}{"id":{{ p.id }},"label":"{{ p.code }} — {{ p.name|truncatechars:45|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                    {{ sd.school.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Step 2: Programme (filtered by school) -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">
+                  <span class="badge bg-success me-1">2</span> Programme
+                  <small class="text-muted fw-normal">(default: all)</small>
+                </label>
+                <select id="genProgramme" class="form-select">
+                  <option value="">All Programmes</option>
+                  {% for p in programmes %}
+                  <option value="{{ p.id }}" data-school="{{ p.school_id }}">
+                    {{ p.code }} — {{ p.name|truncatechars:45 }}
+                  </option>
+                  {% endfor %}
+                </select>
+                <div id="genProgrammeHint" class="form-text text-muted" style="display:none">
+                  Showing programmes for selected school only.
+                </div>
+              </div>
+
+              <!-- Step 3: Semester -->
+              <div class="mb-4">
+                <label class="form-label fw-semibold">
+                  <span class="badge bg-success me-1">3</span> Semester
+                </label>
+                <select id="genSemester" class="form-select">
+                  <option value="">Both Semesters</option>
+                  <option value="1">Semester 1</option>
+                  <option value="2">Semester 2</option>
+                </select>
+              </div>
+
+              <!-- Selection summary -->
+              <div id="genSummary" class="alert alert-light border small mb-3 py-2">
+                <i class="bi bi-info-circle text-success"></i>
+                Will generate for: <strong id="genSummaryText">All Schools → All Programmes → Both Semesters</strong>
+              </div>
+
+              <div class="d-grid gap-2">
+                <button class="btn btn-success" id="btnGenerate">
+                  <i class="bi bi-lightning-fill"></i> Generate Teaching Timetable
+                </button>
+                <button class="btn btn-outline-warning" id="btnGenerateExam">
+                  <i class="bi bi-clipboard-check"></i> Generate Exam Timetable
+                </button>
+              </div>
+              <div id="genStatus" class="mt-3 small"></div>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+          </div>
+        </div>
+
+        <!-- Lecturer assignment card -->
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white fw-bold">
+              <i class="bi bi-link-45deg"></i> Assign Lecturer to Course
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Course</label>
+                <select id="assignCourse" class="form-select">
+                  <option value="">— Select Course —</option>
+                  {% for c in courses %}
+                  <option value="{{ c.id }}">{{ c.code }} — {{ c.title|truncatechars:40 }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Lecturer</label>
+                <select id="assignLecturer" class="form-select">
+                  <option value="">— Select Lecturer —</option>
+                  {% for l in lecturers %}
+                  <option value="{{ l.id }}">{{ l.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
               <button id="btnAssign" class="btn btn-dark w-100">
                 <i class="bi bi-link-45deg"></i> Assign
               </button>
+              <div id="assignStatus" class="mt-2"></div>
+              <hr>
+              <p class="fw-semibold small mb-2">Bulk Upload (Course_Code, Lecturer_Name)</p>
+              <form class="upload-form" data-url="{% url 'upload_assignments' %}">
+                {% csrf_token %}
+                <div class="input-group input-group-sm">
+                  <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                  <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+                </div>
+              </form>
+              <div class="upload-result mt-2 small"></div>
             </div>
           </div>
-          <div id="assignStatus" class="mt-2"></div>
+        </div>
 
-          <!-- Bulk upload -->
-          <hr>
-          <p class="fw-semibold small">Bulk Upload (Course_Code, Lecturer_Name)</p>
-          <form class="upload-form" data-url="{% url 'upload_assignments' %}">
-            {% csrf_token %}
-            <div class="input-group">
-              <input type="file" class="form-control form-control-sm" name="file" accept=".xlsx" required>
-              <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+        <!-- Export card -->
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-header bg-info text-white fw-bold">
+              <i class="bi bi-download"></i> Export Timetable
             </div>
-          </form>
-          <div class="upload-result mt-2"></div>
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-auto">
+                  <a href="{% url 'download_timetable' %}?format=excel&type=by_programme" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i> Excel by Programme
+                  </a>
+                </div>
+                <div class="col-auto">
+                  <a href="{% url 'download_timetable' %}?format=excel&type=by_venue" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i> Excel by Venue
+                  </a>
+                </div>
+                <div class="col-auto">
+                  <a href="{% url 'download_timetable' %}?format=excel&type=by_lecturer" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i> Excel by Lecturer
+                  </a>
+                </div>
+                <div class="col-auto">
+                  <a href="{% url 'download_timetable' %}?format=pdf&type=by_programme" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF by Programme
+                  </a>
+                </div>
+                <div class="col-auto">
+                  <a href="{% url 'download_timetable' %}?format=pdf&type=by_venue" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF by Venue
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /section-generate -->
+
+    <!-- ══ SECTION: Check Conflicts ═════════════════════════════ -->
+    <div id="section-conflicts" class="coord-section">
+      <h4 class="fw-bold mb-4"><i class="bi bi-exclamation-triangle-fill text-warning"></i> Check Conflicts</h4>
+
+      <div class="row g-4">
+        <div class="col-lg-5">
+          <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark fw-bold">
+              <i class="bi bi-search"></i> Run Conflict Check
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">
+                Checks for double-booked rooms, lecturers, and student groups across all timetable entries.
+              </p>
+              <button class="btn btn-warning w-100" id="btnCheckConflicts">
+                <i class="bi bi-search"></i> Check All Conflicts
+              </button>
+              <div id="conflictSummary" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div class="card shadow-sm">
+            <div class="card-header bg-light fw-bold">
+              <i class="bi bi-list-ul"></i> Conflict Details
+            </div>
+            <div class="card-body p-0">
+              <div id="conflictDetails" style="max-height:450px;overflow-y:auto;padding:1rem">
+                <p class="text-muted text-center py-4">Run the check to see results here.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+    </div><!-- /section-conflicts -->
+
+    <!-- ══ SECTION: School Tables ════════════════════════════════ -->
+    <div id="section-schools" class="coord-section">
+      <h4 class="fw-bold mb-4"><i class="bi bi-bank2 text-primary"></i> School Tables</h4>
+
+      {% if not schools_detail %}
+      <div class="alert alert-info">No schools found. The admin needs to upload student population data first.</div>
+      {% endif %}
+
+      {% for sd in schools_detail %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <span>
+            <i class="bi bi-bank2"></i> {{ sd.school.name }}
+            <span class="badge bg-light text-dark ms-2">{{ sd.school.code }}</span>
+          </span>
+          <span class="small opacity-75">{{ sd.programmes|length }} programme(s)</span>
+        </div>
+        <div class="card-body p-0">
+
+          <ul class="nav nav-tabs px-3 pt-2" id="schoolTabs-{{ sd.school.id }}">
+            <li class="nav-item">
+              <a class="nav-link active" data-bs-toggle="tab" href="#cstud-{{ sd.school.id }}">
+                <i class="bi bi-people"></i> Student Population
+                <span class="badge bg-secondary ms-1">{{ sd.student_counts|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#clect-{{ sd.school.id }}">
+                <i class="bi bi-person-badge"></i> Lecturers
+                <span class="badge bg-secondary ms-1">{{ sd.lecturers|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#ccour-{{ sd.school.id }}">
+                <i class="bi bi-book"></i> Courses
+                <span class="badge bg-secondary ms-1">{{ sd.courses|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab" href="#ctt-{{ sd.school.id }}">
+                <i class="bi bi-calendar3"></i> Timetable
+                <span class="badge bg-secondary ms-1">{{ sd.timetable|length }}</span>
+              </a>
+            </li>
+          </ul>
+
+          <div class="tab-content p-0">
+
+            <!-- Student Population -->
+            <div class="tab-pane fade show active" id="cstud-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for sc in sd.student_counts %}
+                    <tr>
+                      <td>{{ sc.programme.code }}</td>
+                      <td>Year {{ sc.study_year }}</td>
+                      <td>{{ sc.male_count }}</td>
+                      <td>{{ sc.female_count }}</td>
+                      <td><strong>{{ sc.total_count }}</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No student population data</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Lecturers -->
+            <div class="tab-pane fade" id="clect-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>#</th><th>Name</th><th>Email</th><th>Courses Assigned</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for l in sd.lecturers %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td><strong>{{ l.name }}</strong></td>
+                      <td class="small text-muted">{{ l.email }}</td>
+                      <td class="small">
+                        {% for c in sd.courses %}{% if c.lecturer_id == l.id %}
+                          <span class="badge bg-primary me-1">{{ c.code }}</span>
+                        {% endif %}{% endfor %}
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No lecturers assigned yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Courses -->
+            <div class="tab-pane fade" id="ccour-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for c in sd.courses %}
+                    <tr>
+                      <td><strong>{{ c.code }}</strong></td>
+                      <td>{{ c.title }}</td>
+                      <td class="small">{{ c.programme.code }}</td>
+                      <td>{{ c.study_year }}</td>
+                      <td>{{ c.semester }}</td>
+                      <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">No courses for this school</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Timetable -->
+            <div class="tab-pane fade" id="ctt-{{ sd.school.id }}">
+              {% if sd.timetable %}
+              <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                <table class="table table-sm table-hover mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr>
+                      <th>Programme</th><th>Year</th><th>Sem</th>
+                      <th>Course</th><th>Title</th>
+                      <th>Room</th><th>Day</th><th>Time</th><th>Lecturer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for entry in sd.timetable %}
+                    <tr>
+                      <td class="small"><strong>{{ entry.programme.code }}</strong></td>
+                      <td>{{ entry.course.study_year }}</td>
+                      <td>{{ entry.course.semester }}</td>
+                      <td><span class="badge bg-primary">{{ entry.course.code }}</span></td>
+                      <td class="small">{{ entry.course.title }}</td>
+                      <td class="small">{{ entry.room.name }}</td>
+                      <td>{{ entry.timeslot.get_day_display }}</td>
+                      <td class="small text-nowrap">{{ entry.timeslot.start_time|time:"H:i" }}–{{ entry.timeslot.end_time|time:"H:i" }}</td>
+                      <td class="small text-muted">{{ entry.lecturer.name|default:"TBA" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="text-center text-muted py-5">
+                <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+                No timetable generated yet for this school.<br>
+                <small>Go to <strong>Generate Timetable</strong> to create one.</small>
+              </div>
+              {% endif %}
+            </div>
+
+          </div><!-- /tab-content -->
+        </div><!-- /card-body -->
+      </div><!-- /school card -->
+      {% endfor %}
+
+    </div><!-- /section-schools -->
+
+    <!-- ══ SECTION: View Timetable ═══════════════════════════════ -->
+    <div id="section-timetable" class="coord-section">
+      <h4 class="fw-bold mb-3"><i class="bi bi-calendar3 text-primary"></i> View Timetable</h4>
+
+      <!-- Filter bar -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold mb-1">Programme</label>
+              <select id="filterProgramme" class="form-select form-select-sm">
+                <option value="">All Programmes</option>
+                {% for p in programmes %}
+                <option value="{{ p.id }}">{{ p.code }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold mb-1">Study Year</label>
+              <select id="filterYear" class="form-select form-select-sm">
+                <option value="">All Years</option>
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+                <option value="3">Year 3</option>
+                <option value="4">Year 4</option>
+                <option value="5">Year 5</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-semibold mb-1">Semester</label>
+              <select id="filterSemester" class="form-select form-select-sm">
+                <option value="">Both</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold mb-1">View As</label>
+              <select id="filterViewType" class="form-select form-select-sm">
+                <option value="calendar">Calendar (FullCalendar)</option>
+                <option value="table">Table / Grid</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-primary btn-sm w-100" id="btnLoadTimetable">
+                <i class="bi bi-arrow-repeat"></i> Load
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar view -->
+      <div id="calendarView" class="card shadow-sm mb-3">
+        <div class="card-header bg-primary text-white fw-bold">
+          <i class="bi bi-calendar-week"></i> Timetable Calendar
+          <small class="ms-2 opacity-75">(Drag events to reschedule)</small>
+        </div>
+        <div class="card-body">
+          <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet'/>
+          <div id="timetable-calendar" style="min-height:550px"></div>
+        </div>
+      </div>
+
+      <!-- Table view (hidden by default) -->
+      <div id="tableView" class="card shadow-sm mb-3" style="display:none">
+        <div class="card-header bg-primary text-white fw-bold">
+          <i class="bi bi-table"></i> Timetable Table
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height:600px;overflow-y:auto">
+            <table class="table table-sm table-striped table-hover mb-0" id="ttTable">
+              <thead class="table-dark sticky-top">
+                <tr>
+                  <th>Programme</th><th>Year</th><th>Sem</th>
+                  <th>Course Code</th><th>Course Title</th>
+                  <th>Day</th><th>Time</th><th>Room</th><th>Lecturer</th>
+                </tr>
+              </thead>
+              <tbody id="ttTableBody">
+                <tr><td colspan="9" class="text-center text-muted py-4">Use the filters above and click Load.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /section-timetable -->
+
+  </div><!-- /coord-main -->
+</div><!-- /coord-layout -->
 
 <!-- Entry Detail Modal -->
 <div class="modal fade" id="entryModal" tabindex="-1">
@@ -210,15 +577,36 @@
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 <script>
-const DAY_MAP = {'MON':'monday','TUE':'tuesday','WED':'wednesday','THU':'thursday','FRI':'friday'};
-let calendar, currentEntryId = null;
+// ── Sidebar navigation ────────────────────────────────────────────
+document.querySelectorAll('.coord-sidebar .nav-item a[data-section]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.coord-sidebar .nav-item a').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+    document.querySelectorAll('.coord-section').forEach(s => s.classList.remove('active'));
+    const sec = document.getElementById('section-' + this.dataset.section);
+    if (sec) {
+      sec.classList.add('active');
+      // Init calendar when timetable section first becomes visible
+      if (this.dataset.section === 'timetable' && !calendarInitialised) initCalendar();
+    }
+  });
+});
 
-document.addEventListener('DOMContentLoaded', function() {
+// ── CSRF helper ───────────────────────────────────────────────────
+function getCsrfToken() {
+  const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+  return cookie ? cookie.split('=')[1] : '';
+}
+
+// ── FullCalendar ──────────────────────────────────────────────────
+let calendar, currentEntryId = null, calendarInitialised = false;
+
+function initCalendar() {
+  calendarInitialised = true;
   const el = document.getElementById('timetable-calendar');
   calendar = new FullCalendar.Calendar(el, {
     initialView: 'timeGridWeek',
@@ -237,17 +625,16 @@ document.addEventListener('DOMContentLoaded', function() {
     events: [],
   });
   calendar.render();
-});
+}
 
-function loadTimetable() {
+function loadCalendarEvents() {
   const prog = document.getElementById('filterProgramme').value;
   const year = document.getElementById('filterYear').value;
-  const sem = document.getElementById('filterSemester').value;
-  let url = '/api/timetable-entries/?';
-  if (prog) url += `programme=${prog}&`;
-  if (year) url += `year=${year}&`;
-  if (sem) url += `semester=${sem}&`;
-  url += 'exam_only=0';
+  const sem  = document.getElementById('filterSemester').value;
+  let url = '/api/timetable-entries/?exam_only=0';
+  if (prog) url += `&programme=${prog}`;
+  if (year) url += `&year=${year}`;
+  if (sem)  url += `&semester=${sem}`;
 
   fetch(url).then(r => r.json()).then(data => {
     const events = (data.results || data).map(e => ({
@@ -257,12 +644,59 @@ function loadTimetable() {
       startTime: e.timeslot_start,
       endTime: e.timeslot_end,
       extendedProps: e,
-      backgroundColor: e.is_exam ? '#dc3545' : '#0066cc',
+      backgroundColor: e.is_exam ? '#dc3545' : '#1a5276',
     }));
     calendar.removeAllEvents();
     calendar.addEventSource(events);
   });
 }
+
+function loadTableRows() {
+  const prog = document.getElementById('filterProgramme').value;
+  const year = document.getElementById('filterYear').value;
+  const sem  = document.getElementById('filterSemester').value;
+  let url = '/api/timetable-entries/?exam_only=0';
+  if (prog) url += `&programme=${prog}`;
+  if (year) url += `&year=${year}`;
+  if (sem)  url += `&semester=${sem}`;
+
+  const tbody = document.getElementById('ttTableBody');
+  tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>';
+
+  fetch(url).then(r => r.json()).then(data => {
+    const rows = (data.results || data);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No entries found for these filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(e => `
+      <tr>
+        <td><strong>${e.programme_code}</strong></td>
+        <td>${e.study_year || ''}</td>
+        <td>${e.semester || ''}</td>
+        <td><span class="badge bg-primary">${e.course_code}</span></td>
+        <td class="small">${e.course_title}</td>
+        <td>${e.timeslot_day_display}</td>
+        <td class="small text-nowrap">${e.timeslot_start}–${e.timeslot_end}</td>
+        <td class="small">${e.room_name}</td>
+        <td class="small text-muted">${e.lecturer_name || 'TBA'}</td>
+      </tr>`).join('');
+  });
+}
+
+document.getElementById('btnLoadTimetable').addEventListener('click', function() {
+  const viewType = document.getElementById('filterViewType').value;
+  if (viewType === 'calendar') {
+    document.getElementById('calendarView').style.display = '';
+    document.getElementById('tableView').style.display = 'none';
+    if (!calendarInitialised) initCalendar();
+    loadCalendarEvents();
+  } else {
+    document.getElementById('calendarView').style.display = 'none';
+    document.getElementById('tableView').style.display = '';
+    loadTableRows();
+  }
+});
 
 function dayToNum(day) {
   return {'MON':1,'TUE':2,'WED':3,'THU':4,'FRI':5}[day] || 1;
@@ -283,61 +717,136 @@ function handleEventClick(info) {
 }
 
 function handleEventDrop(info) {
-  const entryId = info.event.id;
-  // After drag: ask backend to reschedule (simplified — in production map to timeslot ID)
   if (!confirm('Reschedule this entry?')) { info.revert(); return; }
-  // For now, show that drag-drop is registered; full reschedule needs timeslot mapping
   fetch('/api/timetable/reschedule/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-    body: JSON.stringify({ entry_id: entryId, timeslot_id: null })
+    body: JSON.stringify({ entry_id: info.event.id, timeslot_id: null })
   }).catch(() => info.revert());
 }
 
-document.getElementById('btnLoadCalendar').addEventListener('click', loadTimetable);
+// ── School → Programme cascade ────────────────────────────────────
+const genSchoolEl    = document.getElementById('genSchool');
+const genProgEl      = document.getElementById('genProgramme');
+const genSemEl       = document.getElementById('genSemester');
+const genSummaryText = document.getElementById('genSummaryText');
+const genProgHint    = document.getElementById('genProgrammeHint');
 
-// Generate
+// Store all original programme options so we can restore them
+const allProgOptions = Array.from(genProgEl.querySelectorAll('option')).map(o => ({
+  value: o.value, text: o.textContent, school: o.dataset.school
+}));
+
+function updateGenSummary() {
+  const schoolTxt = genSchoolEl.options[genSchoolEl.selectedIndex].text;
+  const progTxt   = genProgEl.options[genProgEl.selectedIndex].text;
+  const semTxt    = genSemEl.options[genSemEl.selectedIndex].text;
+  genSummaryText.textContent =
+    `${schoolTxt} → ${progTxt} → ${semTxt}`;
+}
+
+genSchoolEl.addEventListener('change', function() {
+  const schoolId = this.value;
+
+  // Rebuild programme dropdown
+  genProgEl.innerHTML = '<option value="">All Programmes</option>';
+  if (schoolId) {
+    // Use the data-programmes attribute from the selected school option
+    const selOpt = this.options[this.selectedIndex];
+    let progs = [];
+    try { progs = JSON.parse(selOpt.dataset.programmes || '[]'); } catch(e) {}
+    progs.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = p.label;
+      genProgEl.appendChild(o);
+    });
+    genProgHint.style.display = '';
+  } else {
+    // Restore all programmes
+    allProgOptions.filter(p => p.value).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.value; o.textContent = p.text; o.dataset.school = p.school;
+      genProgEl.appendChild(o);
+    });
+    genProgHint.style.display = 'none';
+  }
+  updateGenSummary();
+});
+
+genProgEl.addEventListener('change', updateGenSummary);
+genSemEl.addEventListener('change', updateGenSummary);
+
+// ── Generate ──────────────────────────────────────────────────────
 function generate(examOnly) {
-  const prog = document.getElementById('genProgramme').value;
-  const sem = document.getElementById('genSemester').value;
-  const status = document.getElementById('genStatus');
+  const schoolId = genSchoolEl.value;
+  const progId   = genProgEl.value;
+  const sem      = genSemEl.value;
+  const status   = document.getElementById('genStatus');
+
+  // Collect programme_ids: if a specific programme chosen, use it;
+  // else if a school chosen, use all its programmes; else send empty (= all)
+  let programme_ids = [];
+  if (progId) {
+    programme_ids = [parseInt(progId)];
+  } else if (schoolId) {
+    const selOpt = genSchoolEl.options[genSchoolEl.selectedIndex];
+    let progs = [];
+    try { progs = JSON.parse(selOpt.dataset.programmes || '[]'); } catch(e) {}
+    programme_ids = progs.map(p => p.id);
+  }
+
   status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Running HGCSA...';
   fetch('/api/timetable/generate-advanced/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-    body: JSON.stringify({ programme_ids: prog ? [prog] : [], semester: sem, exam_only: examOnly })
+    body: JSON.stringify({ programme_ids, semester: sem, exam_only: examOnly })
   }).then(r => r.json()).then(data => {
-    if (data.error) status.innerHTML = `<span class="text-danger">${data.error}</span>`;
-    else {
+    if (data.error) {
+      status.innerHTML = `<div class="alert alert-danger py-2">${data.error}</div>`;
+    } else {
       const ok = data.is_conflict_free;
-      status.innerHTML = `<span class="text-${ok ? 'success' : 'warning'}">${data.entries_count} entries. ${ok ? '✅ Conflict-free!' : '⚠️ Conflicts: ' + data.conflicts.length}</span>`;
-      loadTimetable();
+      status.innerHTML = `<div class="alert alert-${ok ? 'success' : 'warning'} py-2">
+        <strong>${data.entries_count}</strong> entries created.
+        ${ok ? '✅ Conflict-free!' : '⚠️ ' + data.conflicts.length + ' conflict(s) found.'}
+      </div>`;
     }
   });
 }
 document.getElementById('btnGenerate').onclick = () => generate(false);
 document.getElementById('btnGenerateExam').onclick = () => generate(true);
 
-// Conflict check
+// ── Conflict Check ────────────────────────────────────────────────
 document.getElementById('btnCheckConflicts').addEventListener('click', function() {
-  const status = document.getElementById('conflictStatus');
-  status.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  const summary = document.getElementById('conflictSummary');
+  const details = document.getElementById('conflictDetails');
+  summary.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking...';
+  details.innerHTML = '';
   fetch('/api/timetable/check-conflicts/').then(r => r.json()).then(data => {
-    status.innerHTML = data.is_valid
-      ? '<span class="text-success">✅ Zero conflicts</span>'
-      : `<span class="text-danger">⚠️ ${data.total_conflicts} conflict(s)</span>`;
+    if (data.is_valid) {
+      summary.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle-fill"></i> ✅ Zero conflicts — timetable is valid!</div>';
+      details.innerHTML = '<p class="text-success text-center py-3">No conflicts found.</p>';
+    } else {
+      summary.innerHTML = `<div class="alert alert-danger mb-0"><i class="bi bi-x-circle-fill"></i> ⚠️ ${data.total_conflicts} conflict(s) detected.</div>`;
+      const list = (data.conflicts || []).map(c =>
+        `<div class="alert alert-warning py-2 mb-2 small">${c.message || JSON.stringify(c)}</div>`
+      ).join('');
+      details.innerHTML = list || '<p class="text-muted">Details unavailable.</p>';
+    }
   });
 });
 
-// Delete entry
+// ── Delete entry ──────────────────────────────────────────────────
 document.getElementById('btnDeleteEntry').addEventListener('click', function() {
   if (!currentEntryId || !confirm('Delete this entry?')) return;
   fetch(`/api/timetable/delete-entry/${currentEntryId}/`, {
     method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
-  }).then(() => { bootstrap.Modal.getInstance(document.getElementById('entryModal')).hide(); loadTimetable(); });
+  }).then(() => {
+    bootstrap.Modal.getInstance(document.getElementById('entryModal')).hide();
+    if (calendar) loadCalendarEvents();
+  });
 });
 
-// Assign lecturer
+// ── Assign lecturer ───────────────────────────────────────────────
 document.getElementById('btnAssign').addEventListener('click', function() {
   const courseId = document.getElementById('assignCourse').value;
   const lecturerId = document.getElementById('assignLecturer').value;
@@ -348,12 +857,12 @@ document.getElementById('btnAssign').addEventListener('click', function() {
     body: JSON.stringify({ lecturer: lecturerId })
   }).then(r => r.json()).then(data => {
     document.getElementById('assignStatus').innerHTML = data.id
-      ? `<div class="alert alert-success py-1">Assigned!</div>`
-      : `<div class="alert alert-danger py-1">Error</div>`;
+      ? `<div class="alert alert-success py-1 mt-2">Assigned successfully!</div>`
+      : `<div class="alert alert-danger py-1 mt-2">Error assigning.</div>`;
   });
 });
 
-// Upload forms
+// ── Bulk upload forms ─────────────────────────────────────────────
 document.querySelectorAll('.upload-form').forEach(form => {
   form.addEventListener('submit', function(e) {
     e.preventDefault();
@@ -369,4 +878,5 @@ document.querySelectorAll('.upload-form').forEach(form => {
   });
 });
 </script>
+
 {% endblock %}

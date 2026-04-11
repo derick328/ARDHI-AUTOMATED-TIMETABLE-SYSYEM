@@ -201,6 +201,25 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         </div>
       </div>
 
+      <!-- Timeslot Seeder -->
+      <div class="card shadow mb-4 border-info">
+        <div class="card-header bg-info text-white fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-clock-history"></i> Timeslots Setup</span>
+          <span class="badge bg-light text-dark">Run once before generating</span>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-2">
+            Sets the official ARDHI timeslot schedule: <strong>07:00–09:00 &bull; 09:10–11:10 &bull; 11:20–13:20 &bull; 13:30–15:30 &bull; 15:40–17:40 &bull; 17:50–19:50</strong><br>
+            <i class="bi bi-info-circle text-warning"></i> <strong>Friday 11:20–13:20</strong> is automatically kept free for all programmes.
+            This will <strong>delete all existing timeslots</strong> and recreate them correctly.
+          </p>
+          <button class="btn btn-info text-white" id="btnSeedTimeslots">
+            <i class="bi bi-clock-history"></i> Apply Timeslots (Reset &amp; Seed)
+          </button>
+          <div id="seedTimeslotStatus" class="mt-2 small"></div>
+        </div>
+      </div>
+
       <!-- Generate Timetable -->
       <div class="card shadow mb-4">
         <div class="card-header bg-success text-white fw-bold">
@@ -869,6 +888,29 @@ function generateTimetable(examOnly) {
 }
 document.getElementById('btnGenerate').onclick = () => generateTimetable(false);
 document.getElementById('btnGenerateExam').onclick = () => generateTimetable(true);
+
+// ── Seed timeslots ────────────────────────────────────────────────
+document.getElementById('btnSeedTimeslots').addEventListener('click', function() {
+  if (!confirm(
+    'This will DELETE all existing timeslots and create the official ARDHI schedule:\n\n' +
+    '07:00–09:00 | 09:10–11:10 | 11:20–13:20 | 13:30–15:30 | 15:40–17:40 | 17:50–19:50\n\n' +
+    'Friday 11:20–13:20 will be kept FREE.\n\nProceed?'
+  )) return;
+  const status = document.getElementById('seedTimeslotStatus');
+  status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Applying timeslots...';
+  fetch('/api/admin/seed-timeslots/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ reset: true })
+  }).then(r => r.json()).then(data => {
+    status.innerHTML = `<div class="alert alert-success py-2">
+      <i class="bi bi-check-circle-fill"></i> ${data.message}
+      <br><small>Deleted: ${data.deleted} old | Created: ${data.created} new</small>
+    </div>`;
+  }).catch(() => {
+    status.innerHTML = '<div class="alert alert-danger py-2">Failed to seed timeslots.</div>';
+  });
+});
 
 // ── Conflict check ────────────────────────────────────────────────
 document.getElementById('btnCheckConflicts').addEventListener('click', function() {

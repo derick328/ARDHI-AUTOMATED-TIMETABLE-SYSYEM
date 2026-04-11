@@ -533,6 +533,58 @@ class UploadCourseAssignmentsView(APIView):
         return Response(result)
 
 
+class SeedTimeslotsView(APIView):
+    """
+    POST /api/admin/seed-timeslots/
+    Clears all existing timeslots and creates the official ARDHI schedule:
+      07:00-09:00, 09:10-11:10, 11:20-13:20, 13:30-15:30, 15:40-17:40, 17:50-19:50
+    Friday 11:20-13:20 is free (not created).
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        from datetime import time as t
+        from .models import Timeslot
+
+        SLOT_TIMES = [
+            (t(7,  0),  t(9,  0)),
+            (t(9, 10),  t(11, 10)),
+            (t(11, 20), t(13, 20)),   # Friday: skipped
+            (t(13, 30), t(15, 30)),
+            (t(15, 40), t(17, 40)),
+            (t(17, 50), t(19, 50)),
+        ]
+        FRIDAY_BLOCKED = {(t(11, 20), t(13, 20))}
+        DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI']
+
+        reset = request.data.get('reset', True)
+        deleted = 0
+        if reset:
+            deleted, _ = Timeslot.objects.all().delete()
+
+        created = 0
+        for day in DAYS:
+            for start, end in SLOT_TIMES:
+                if day == 'FRI' and (start, end) in FRIDAY_BLOCKED:
+                    continue
+                _, was_created = Timeslot.objects.get_or_create(
+                    day=day, start_time=start, end_time=end
+                )
+                if was_created:
+                    created += 1
+
+        log_action(request.user, 'SEED_TIMESLOTS', 'Timeslot',
+                   details=f'deleted={deleted}, created={created}')
+        return Response({
+            'deleted': deleted,
+            'created': created,
+            'message': (
+                f'Timeslots reset. {created} timeslots created '
+                f'(Mon–Thu: 6 slots each, Fri: 5 slots — 11:20–13:20 free).'
+            )
+        })
+
+
 # ── CRUD ViewSets ─────────────────────────────────────────────────────────────────
 
 class SchoolViewSet(viewsets.ModelViewSet):
