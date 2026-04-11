@@ -69,6 +69,11 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
           </a>
         </li>
         <li class="nav-item">
+          <a href="#" data-section="schools">
+            <i class="bi bi-bank2"></i> Schools
+          </a>
+        </li>
+        <li class="nav-item">
           <a href="#" data-section="users">
             <i class="bi bi-people-fill"></i> Users
           </a>
@@ -466,6 +471,191 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
 
       </div>
     </div><!-- /section-uploaded-items -->
+
+    <!-- ══ SECTION: Schools ══════════════════════════════════════ -->
+    <div id="section-schools" class="admin-section">
+      <h4 class="fw-bold mb-3"><i class="bi bi-bank2 text-primary"></i> Schools</h4>
+
+      {% if not schools_detail %}
+      <div class="alert alert-info">No schools uploaded yet. Upload Student Populations first.</div>
+      {% endif %}
+
+      {% for sd in schools_detail %}
+      <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-bank2"></i> {{ sd.school.name }}
+            <span class="badge bg-light text-dark ms-2">{{ sd.school.code }}</span>
+          </span>
+          <span class="small opacity-75">{{ sd.programmes|length }} programme(s)</span>
+        </div>
+        <div class="card-body p-0">
+
+          <!-- School nav tabs -->
+          <ul class="nav nav-tabs px-3 pt-2" id="schoolTabs-{{ sd.school.id }}">
+            <li class="nav-item">
+              <a class="nav-link active" data-bs-toggle="tab"
+                href="#stud-{{ sd.school.id }}">
+                <i class="bi bi-people"></i> Student Population
+                <span class="badge bg-secondary ms-1">{{ sd.student_counts|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab"
+                href="#lect-{{ sd.school.id }}">
+                <i class="bi bi-person-badge"></i> Lecturers
+                <span class="badge bg-secondary ms-1">{{ sd.lecturers|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab"
+                href="#cour-{{ sd.school.id }}">
+                <i class="bi bi-book"></i> Courses
+                <span class="badge bg-secondary ms-1">{{ sd.courses|length }}</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" data-bs-toggle="tab"
+                href="#tt-{{ sd.school.id }}">
+                <i class="bi bi-calendar3"></i> Timetable
+                <span class="badge bg-secondary ms-1">{{ sd.timetable|length }}</span>
+              </a>
+            </li>
+          </ul>
+
+          <div class="tab-content p-0">
+
+            <!-- Student Population -->
+            <div class="tab-pane fade show active" id="stud-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for sc in sd.student_counts %}
+                    <tr>
+                      <td>{{ sc.programme.code }}</td>
+                      <td>Year {{ sc.study_year }}</td>
+                      <td>{{ sc.male_count }}</td>
+                      <td>{{ sc.female_count }}</td>
+                      <td><strong>{{ sc.total_count }}</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No student population data for this school</td></tr>
+                    {% endfor %}
+                  </tbody>
+                  {% if sd.student_counts %}
+                  <tfoot class="table-secondary fw-bold">
+                    <tr>
+                      <td colspan="2">Total</td>
+                      <td>{% with total_m=0 %}{% for sc in sd.student_counts %}{{ sc.male_count|add:total_m }}{% endfor %}{% endwith %}</td>
+                      <td></td>
+                      <td>
+                        {% with t=0 %}{% for sc in sd.student_counts %}{% endfor %}{% endwith %}
+                        {{ sd.student_counts|length }} entries
+                      </td>
+                    </tr>
+                  </tfoot>
+                  {% endif %}
+                </table>
+              </div>
+            </div>
+
+            <!-- Lecturers -->
+            <div class="tab-pane fade" id="lect-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>#</th><th>Name</th><th>Email</th><th>Courses Assigned</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for l in sd.lecturers %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td><strong>{{ l.name }}</strong></td>
+                      <td class="small text-muted">{{ l.email }}</td>
+                      <td class="small">
+                        {% for c in sd.courses %}{% if c.lecturer_id == l.id %}
+                          <span class="badge bg-primary me-1">{{ c.code }}</span>
+                        {% endif %}{% endfor %}
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No lecturers assigned yet</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Courses -->
+            <div class="tab-pane fade" id="cour-{{ sd.school.id }}">
+              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+                <table class="table table-sm table-striped mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for c in sd.courses %}
+                    <tr>
+                      <td><strong>{{ c.code }}</strong></td>
+                      <td>{{ c.title }}</td>
+                      <td class="small">{{ c.programme.code }}</td>
+                      <td>{{ c.study_year }}</td>
+                      <td>{{ c.semester }}</td>
+                      <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">No courses uploaded for this school</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Timetable -->
+            <div class="tab-pane fade" id="tt-{{ sd.school.id }}">
+              {% if sd.timetable %}
+              <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+                <table class="table table-sm table-hover mb-0">
+                  <thead class="table-dark sticky-top">
+                    <tr>
+                      <th>Programme</th><th>Year</th><th>Sem</th>
+                      <th>Course Code</th><th>Course Title</th>
+                      <th>Room</th><th>Day</th><th>Time</th><th>Lecturer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for entry in sd.timetable %}
+                    <tr>
+                      <td class="small"><strong>{{ entry.programme.code }}</strong></td>
+                      <td>{{ entry.course.study_year }}</td>
+                      <td>{{ entry.course.semester }}</td>
+                      <td><span class="badge bg-primary">{{ entry.course.code }}</span></td>
+                      <td class="small">{{ entry.course.title }}</td>
+                      <td class="small">{{ entry.room.name }}</td>
+                      <td>{{ entry.timeslot.get_day_display }}</td>
+                      <td class="small text-nowrap">{{ entry.timeslot.start_time|time:"H:i" }}–{{ entry.timeslot.end_time|time:"H:i" }}</td>
+                      <td class="small text-muted">{{ entry.lecturer.name|default:"TBA" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
+                No timetable generated yet for this school.<br>
+                <small>Go to <strong>Upload Items → Generate Timetable</strong> to generate.</small>
+              </div>
+              {% endif %}
+            </div>
+
+          </div><!-- /tab-content -->
+        </div><!-- /card-body -->
+      </div><!-- /card -->
+      {% endfor %}
+    </div><!-- /section-schools -->
 
     <!-- ══ SECTION: Users ═════════════════════════════════════════ -->
     <div id="section-users" class="admin-section">

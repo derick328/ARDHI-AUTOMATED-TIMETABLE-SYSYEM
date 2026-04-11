@@ -103,6 +103,40 @@ def admin_dashboard(request):
     if not request.user.is_superuser:
         messages.error(request, 'Access denied.')
         return redirect('home')
+    # Build per-school detail data (used by the Schools section)
+    schools_detail = []
+    for school in School.objects.all().order_by('name'):
+        programmes = list(Programme.objects.filter(school=school).order_by('code'))
+        prog_ids = [p.id for p in programmes]
+
+        student_counts = list(
+            StudentCount.objects.filter(programme__in=prog_ids)
+            .select_related('programme')
+            .order_by('programme__code', 'study_year')
+        )
+        courses = list(
+            Course.objects.filter(programme__in=prog_ids)
+            .select_related('programme', 'lecturer')
+            .order_by('programme__code', 'study_year', 'semester')
+        )
+        # Unique lecturers for this school (those teaching at least one course)
+        lecturer_ids = set(c.lecturer_id for c in courses if c.lecturer_id)
+        lecturers = list(Lecturer.objects.filter(id__in=lecturer_ids).order_by('name'))
+        # Timetable entries for this school
+        timetable = list(
+            TimetableEntry.objects.filter(programme__in=prog_ids)
+            .select_related('course', 'room', 'timeslot', 'lecturer', 'programme')
+            .order_by('programme__code', 'timeslot__day', 'timeslot__start_time')
+        )
+        schools_detail.append({
+            'school': school,
+            'programmes': programmes,
+            'student_counts': student_counts,
+            'courses': courses,
+            'lecturers': lecturers,
+            'timetable': timetable,
+        })
+
     context = {
         'schools': School.objects.count(),
         'programmes': Programme.objects.count(),
@@ -123,6 +157,8 @@ def admin_dashboard(request):
         'all_student_counts': StudentCount.objects.select_related('programme').order_by(
             'programme__code', 'study_year'
         ),
+        # Schools detail
+        'schools_detail': schools_detail,
     }
     return render(request, 'scheduler/admin.html', context)
 
