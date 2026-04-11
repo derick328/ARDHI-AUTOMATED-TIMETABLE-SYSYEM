@@ -115,20 +115,20 @@ def parse_lecturers(file_obj):
                 success_count += 1
 
             # Look up course and link (optional — skip if course not uploaded yet)
-            try:
-                course = Course.objects.get(code__iexact=course_code)
+            # Try multiple code formats: exact, no-spaces, no-spaces+uppercase
+            course = (
+                Course.objects.filter(code__iexact=course_code).first() or
+                Course.objects.filter(code__iexact=course_code.replace(' ', '')).first() or
+                Course.objects.filter(code__iexact=re.sub(r'\s+', '', course_code)).first()
+            )
+            if course:
                 course.lecturer = lecturer
                 course.save(update_fields=['lecturer'])
                 linked_count += 1
-            except Course.DoesNotExist:
+            else:
                 errors.append(
                     f"Row {row_idx}: lecturer '{lecturer_name}' saved, "
                     f"but course '{course_code}' not found — upload curriculum first to link"
-                )
-            except Course.MultipleObjectsReturned:
-                errors.append(
-                    f"Row {row_idx}: lecturer '{lecturer_name}' saved, "
-                    f"but multiple courses match '{course_code}' — link manually"
                 )
 
         except Exception as e:

@@ -192,6 +192,26 @@ def parse_curriculum(file_obj):
             else:
                 col_map = _detect_columns(rows[0])
 
+        # ── Data-driven fallback: if course_name is missing but course_code is found,
+        # check whether the course_code column actually holds long descriptive names
+        # (mismatched header). If so, treat the S/N column as course_code instead.
+        if 'course_name' not in col_map and 'course_code' in col_map and header_row_idx is not None:
+            data_rows = rows[header_row_idx + 1: header_row_idx + 6]
+            code_col_vals = [str(r[col_map['course_code']]) for r in data_rows if r[col_map['course_code']]]
+            # If the "code" column values look like long names (avg length > 15), it's actually the name column
+            if code_col_vals and sum(len(v) for v in code_col_vals) / len(code_col_vals) > 15:
+                # Reassign: code_col → course_name; look for real code in sn or first unused column
+                col_map['course_name'] = col_map.pop('course_code')
+                # Find course_code: prefer 'sn' column (often misused for codes), else first unused col
+                if 'sn' in col_map:
+                    col_map['course_code'] = col_map.pop('sn')
+                else:
+                    used = set(col_map.values())
+                    for ci in range(len(rows[header_row_idx])):
+                        if ci not in used:
+                            col_map['course_code'] = ci
+                            break
+
         required = ['course_code', 'course_name', 'study_period']
         missing = [r for r in required if r not in col_map]
         if missing:
