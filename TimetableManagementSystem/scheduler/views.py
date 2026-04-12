@@ -695,6 +695,9 @@ class TimetableEntryViewSet(viewsets.ModelViewSet):
             val = self.request.query_params.get(param)
             if val:
                 qs = qs.filter(**{field: val})
+        school = self.request.query_params.get('school')
+        if school:
+            qs = qs.filter(programme__school_id=school)
         exam_only = self.request.query_params.get('exam_only')
         if exam_only is not None:
             qs = qs.filter(is_exam=bool(int(exam_only)))

@@ -543,15 +543,33 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
       <div class="card shadow-sm mb-3">
         <div class="card-body">
           <div class="row g-2 align-items-end">
+
+            <!-- School filter -->
+            <div class="col-md-2">
+              <label class="form-label fw-semibold mb-1">School</label>
+              <select id="viewFilterSchool" class="form-select form-select-sm">
+                <option value="">All Schools</option>
+                {% for sd in schools_detail %}
+                <option value="{{ sd.school.id }}"
+                  data-programmes='[{% for p in sd.programmes %}{"id":{{ p.id }},"code":"{{ p.code|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                  {{ sd.school.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Programme filter (cascades from school) -->
             <div class="col-md-3">
               <label class="form-label fw-semibold mb-1">Programme</label>
               <select id="filterProgramme" class="form-select form-select-sm">
                 <option value="">All Programmes</option>
                 {% for p in programmes %}
-                <option value="{{ p.id }}">{{ p.code }}</option>
+                <option value="{{ p.id }}" data-school="{{ p.school_id }}">{{ p.code }}</option>
                 {% endfor %}
               </select>
             </div>
+
+            <!-- Study Year -->
             <div class="col-md-2">
               <label class="form-label fw-semibold mb-1">Study Year</label>
               <select id="filterYear" class="form-select form-select-sm">
@@ -563,26 +581,43 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                 <option value="5">Year 5</option>
               </select>
             </div>
-            <div class="col-md-2">
+
+            <!-- Semester -->
+            <div class="col-md-1">
               <label class="form-label fw-semibold mb-1">Semester</label>
               <select id="filterSemester" class="form-select form-select-sm">
                 <option value="">Both</option>
-                <option value="1">Semester 1</option>
-                <option value="2">Semester 2</option>
+                <option value="1">Sem 1</option>
+                <option value="2">Sem 2</option>
               </select>
             </div>
-            <div class="col-md-3">
+
+            <!-- View type -->
+            <div class="col-md-2">
               <label class="form-label fw-semibold mb-1">View As</label>
               <select id="filterViewType" class="form-select form-select-sm">
-                <option value="calendar">Calendar (FullCalendar)</option>
+                <option value="calendar">Calendar</option>
                 <option value="table">Table / Grid</option>
               </select>
             </div>
+
+            <!-- Load button -->
             <div class="col-md-2">
               <button class="btn btn-primary btn-sm w-100" id="btnLoadTimetable">
                 <i class="bi bi-arrow-repeat"></i> Load
               </button>
             </div>
+          </div>
+
+          <!-- Year colour legend -->
+          <div class="mt-3 d-flex flex-wrap gap-2 align-items-center">
+            <small class="text-muted fw-semibold me-1">Year colours:</small>
+            <span class="badge px-3 py-2" style="background:#1565c0">Year 1</span>
+            <span class="badge px-3 py-2" style="background:#2e7d32">Year 2</span>
+            <span class="badge px-3 py-2" style="background:#e65100">Year 3</span>
+            <span class="badge px-3 py-2" style="background:#6a1b9a">Year 4</span>
+            <span class="badge px-3 py-2" style="background:#ad1457">Year 5</span>
+            <span class="badge px-3 py-2" style="background:#4e342e">Exam</span>
           </div>
         </div>
       </div>
@@ -606,10 +641,10 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         </div>
         <div class="card-body p-0">
           <div class="table-responsive" style="max-height:600px;overflow-y:auto">
-            <table class="table table-sm table-striped table-hover mb-0" id="ttTable">
+            <table class="table table-sm table-hover mb-0" id="ttTable">
               <thead class="table-dark sticky-top">
                 <tr>
-                  <th>Programme</th><th>Year</th><th>Sem</th>
+                  <th>Year</th><th>Programme</th><th>Sem</th>
                   <th>Course Code</th><th>Course Title</th>
                   <th>Day</th><th>Time</th><th>Room</th><th>Lecturer</th>
                 </tr>
@@ -695,60 +730,124 @@ function initCalendar() {
   calendar.render();
 }
 
-function loadCalendarEvents() {
+// ── Year colour palette ───────────────────────────────────────────
+const YEAR_COLORS = {
+  1: { bg: '#1565c0', border: '#0d47a1', text: '#fff' },   // deep blue
+  2: { bg: '#2e7d32', border: '#1b5e20', text: '#fff' },   // deep green
+  3: { bg: '#e65100', border: '#bf360c', text: '#fff' },   // deep orange
+  4: { bg: '#6a1b9a', border: '#4a148c', text: '#fff' },   // deep purple
+  5: { bg: '#ad1457', border: '#880e4f', text: '#fff' },   // deep pink/rose
+};
+const EXAM_COLOR = { bg: '#4e342e', border: '#3e2723', text: '#fff' };
+
+function yearColor(studyYear, isExam) {
+  if (isExam) return EXAM_COLOR;
+  return YEAR_COLORS[studyYear] || { bg: '#546e7a', border: '#37474f', text: '#fff' };
+}
+
+// ── School → Programme cascade (View Timetable) ───────────────────
+const viewSchoolEl = document.getElementById('viewFilterSchool');
+const viewProgEl   = document.getElementById('filterProgramme');
+
+const allViewProgOptions = Array.from(viewProgEl.querySelectorAll('option[value]')).map(o => ({
+  value: o.value, text: o.textContent.trim(), school: o.dataset.school
+}));
+
+viewSchoolEl.addEventListener('change', function() {
+  const schoolId = this.value;
+  viewProgEl.innerHTML = '<option value="">All Programmes</option>';
+  if (schoolId) {
+    const selOpt = this.options[this.selectedIndex];
+    let progs = [];
+    try { progs = JSON.parse(selOpt.dataset.programmes || '[]'); } catch(e) {}
+    progs.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = p.code; o.dataset.school = schoolId;
+      viewProgEl.appendChild(o);
+    });
+  } else {
+    allViewProgOptions.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.value; o.textContent = p.text; o.dataset.school = p.school;
+      viewProgEl.appendChild(o);
+    });
+  }
+});
+
+// ── Build API URL from filters ────────────────────────────────────
+function buildFilterUrl() {
   const prog = document.getElementById('filterProgramme').value;
   const year = document.getElementById('filterYear').value;
   const sem  = document.getElementById('filterSemester').value;
-  let url = '/api/timetable-entries/?exam_only=0';
-  if (prog) url += `&programme=${prog}`;
-  if (year) url += `&year=${year}`;
-  if (sem)  url += `&semester=${sem}`;
+  const school = viewSchoolEl.value;
+  let url = '/api/timetable-entries/?format=json';
+  if (prog)   url += `&programme=${prog}`;
+  if (year)   url += `&year=${year}`;
+  if (sem)    url += `&semester=${sem}`;
+  if (school && !prog) url += `&school=${school}`;
+  return url;
+}
 
-  fetch(url).then(r => r.json()).then(data => {
-    const events = (data.results || data).map(e => ({
-      id: e.id,
-      title: `${e.course_code}\n${e.room_name}`,
-      daysOfWeek: [dayToNum(e.timeslot_day)],
-      startTime: e.timeslot_start,
-      endTime: e.timeslot_end,
-      extendedProps: e,
-      backgroundColor: e.is_exam ? '#dc3545' : '#1a5276',
-    }));
+function loadCalendarEvents() {
+  fetch(buildFilterUrl()).then(r => r.json()).then(data => {
+    const events = (data.results || data).map(e => {
+      const yr = e.course_study_year || e.study_year;
+      const col = yearColor(yr, e.is_exam);
+      return {
+        id: e.id,
+        title: `${e.course_code} | Yr${yr}\n${e.room_name}`,
+        daysOfWeek: [dayToNum(e.timeslot_day)],
+        startTime: e.timeslot_start,
+        endTime: e.timeslot_end,
+        extendedProps: e,
+        backgroundColor: col.bg,
+        borderColor: col.border,
+        textColor: col.text,
+      };
+    });
     calendar.removeAllEvents();
     calendar.addEventSource(events);
   });
 }
 
-function loadTableRows() {
-  const prog = document.getElementById('filterProgramme').value;
-  const year = document.getElementById('filterYear').value;
-  const sem  = document.getElementById('filterSemester').value;
-  let url = '/api/timetable-entries/?exam_only=0';
-  if (prog) url += `&programme=${prog}`;
-  if (year) url += `&year=${year}`;
-  if (sem)  url += `&semester=${sem}`;
+// Row colour style for table
+function yearRowStyle(studyYear, isExam) {
+  const col = yearColor(studyYear, isExam);
+  return `border-left: 5px solid ${col.bg};`;
+}
 
+function yearBadgeStyle(studyYear, isExam) {
+  const col = yearColor(studyYear, isExam);
+  return `background:${col.bg};color:${col.text};padding:.2rem .55rem;border-radius:4px;font-size:.78rem;font-weight:600`;
+}
+
+function loadTableRows() {
   const tbody = document.getElementById('ttTableBody');
   tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3"><span class="spinner-border spinner-border-sm"></span> Loading...</td></tr>';
 
-  fetch(url).then(r => r.json()).then(data => {
+  fetch(buildFilterUrl()).then(r => r.json()).then(data => {
     const rows = (data.results || data);
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No entries found for these filters.</td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(e => `
-      <tr>
-        <td><strong>${e.programme_code}</strong></td>
-        <td>${e.study_year || ''}</td>
-        <td>${e.semester || ''}</td>
-        <td><span class="badge bg-primary">${e.course_code}</span></td>
+    tbody.innerHTML = rows.map(e => {
+      const yr = e.course_study_year || e.study_year || '';
+      const rowStyle = yearRowStyle(yr, e.is_exam);
+      const badgeStyle = yearBadgeStyle(yr, e.is_exam);
+      return `
+      <tr style="${rowStyle}">
+        <td><span style="${badgeStyle}">Year ${yr}</span></td>
+        <td class="small fw-semibold">${e.programme_code}</td>
+        <td class="small">${e.course_semester || e.semester || ''}</td>
+        <td><span class="badge bg-dark">${e.course_code}</span></td>
         <td class="small">${e.course_title}</td>
         <td>${e.timeslot_day_display}</td>
         <td class="small text-nowrap">${e.timeslot_start}–${e.timeslot_end}</td>
         <td class="small">${e.room_name}</td>
         <td class="small text-muted">${e.lecturer_name || 'TBA'}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
   });
 }
 
