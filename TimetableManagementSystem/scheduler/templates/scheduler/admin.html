@@ -954,7 +954,8 @@ document.querySelectorAll('.upload-form').forEach(form => {
     fetch(url, { method: 'POST', body: fd, headers: { 'X-CSRFToken': getCsrfToken() } })
       .then(r => r.json())
       .then(data => {
-        let html = `<div class="alert alert-${data.errors && data.errors.length ? 'warning' : 'success'}">`;
+        const hasErrors = data.errors && data.errors.length;
+        let html = `<div class="alert alert-${hasErrors ? 'warning' : 'success'}">`;
         html += `<strong>${data.success_count} record(s) created.</strong>`;
         if (data.linked_count !== undefined) html += ` <strong>${data.linked_count} course(s) linked.</strong>`;
         if (data.sheets_processed) html += `<br>Sheets: ${data.sheets_processed.join(', ')}`;
@@ -966,10 +967,16 @@ document.querySelectorAll('.upload-form').forEach(form => {
           });
           html += '</tbody></table>';
         }
-        if (data.errors && data.errors.length) {
+        if (hasErrors) {
           html += `<br><strong>${data.errors.length} error(s):</strong><ul>`;
           data.errors.slice(0, 10).forEach(e => html += `<li>${e}</li>`);
           if (data.errors.length > 10) html += `<li>...and ${data.errors.length - 10} more</li>`;
+          html += '</ul>';
+        }
+        if (data.warnings && data.warnings.length) {
+          html += `</div><div class="alert alert-info mt-1"><strong>${data.warnings.length} note(s):</strong><ul>`;
+          data.warnings.slice(0, 10).forEach(w => html += `<li>${w}</li>`);
+          if (data.warnings.length > 10) html += `<li>...and ${data.warnings.length - 10} more</li>`;
           html += '</ul>';
         }
         html += '</div>';

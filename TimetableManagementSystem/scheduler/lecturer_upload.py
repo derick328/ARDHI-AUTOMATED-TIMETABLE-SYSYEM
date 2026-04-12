@@ -138,6 +138,7 @@ def parse_lecturers(file_obj):
     success_count = 0
     linked_count = 0
     errors = []
+    warnings = []
     groups_created = []
 
     # ── Phase 1: Scan all rows into an ordered dict without touching the DB ──
@@ -194,7 +195,7 @@ def parse_lecturers(file_obj):
             continue
 
         if not courses:
-            errors.append(
+            warnings.append(
                 f"Course '{orig_code}': lecturer(s) {[l.name for l in lecturers_resolved]} saved "
                 f"but course not found in DB — upload curriculum first to link"
             )
@@ -218,9 +219,9 @@ def parse_lecturers(file_obj):
                 slug = _code_to_slug(orig_code)
 
                 if n > len(courses):
-                    errors.append(
-                        f"Course '{orig_code}': {n} lecturers specified but only {len(courses)} "
-                        f"course record(s) found — using first {len(courses)} lecturers"
+                    warnings.append(
+                        f"Course '{orig_code}': {n} lecturers listed but only {len(courses)} "
+                        f"programme(s) take this course — first {len(courses)} lecturer(s) assigned"
                     )
                     lecturers_resolved = lecturers_resolved[:len(courses)]
                     n = len(lecturers_resolved)
@@ -262,5 +263,6 @@ def parse_lecturers(file_obj):
         'success_count': success_count,
         'linked_count': linked_count,
         'errors': errors,
+        'warnings': warnings,
         'groups_created': groups_created,
     }
