@@ -767,21 +767,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
     <div id="section-lecturers" class="coord-section">
       <h4 class="fw-bold mb-4"><i class="bi bi-person-badge text-primary"></i> Lecturer Management</h4>
 
-      <!-- Lecturer selector -->
+      <!-- Lecturer search -->
       <div class="card shadow-sm mb-4">
         <div class="card-body">
-          <label class="form-label fw-semibold">Select Lecturer</label>
-          <select id="lectSelect" class="form-select" style="max-width:420px">
-            <option value="">— Choose a lecturer —</option>
-            {% for l in lecturers %}
-            <option value="{{ l.id }}"
-              data-name="{{ l.name|escapejs }}"
-              data-email="{{ l.email|escapejs }}"
-              data-fulltime="{{ l.is_full_time|yesno:'true,false' }}">
-              {{ l.name }}{% if not l.is_full_time %} (Part-time){% endif %}
-            </option>
-            {% endfor %}
-          </select>
+          <label class="form-label fw-semibold">Search Lecturer</label>
+          <div class="position-relative" style="max-width:440px">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" id="lectSearch" class="form-control" placeholder="Type lecturer name…" autocomplete="off">
+              <button class="btn btn-outline-secondary" type="button" id="lectSearchClear" style="display:none">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div id="lectSearchResults" class="list-group shadow position-absolute w-100" style="z-index:200;display:none;max-height:220px;overflow-y:auto;top:100%;margin-top:2px"></div>
+          </div>
+          <div class="form-text text-muted mt-1">Start typing to find a lecturer</div>
         </div>
       </div>
 
@@ -866,38 +866,47 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
     <div id="section-courses" class="coord-section">
       <h4 class="fw-bold mb-4"><i class="bi bi-book text-primary"></i> Course Management</h4>
 
-      <!-- Course selector -->
+      <!-- Semester tabs -->
+      <ul class="nav nav-pills mb-4" id="courSemTabs">
+        <li class="nav-item">
+          <button class="nav-link active" data-sem="0">All Semesters</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-sem="1"><i class="bi bi-1-circle me-1"></i>Semester 1</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-sem="2"><i class="bi bi-2-circle me-1"></i>Semester 2</button>
+        </li>
+      </ul>
+
+      <!-- Course search -->
       <div class="card shadow-sm mb-4">
         <div class="card-body">
-          <label class="form-label fw-semibold">Select Course</label>
-          <select id="courSelect" class="form-select" style="max-width:540px">
-            <option value="">— Choose a course —</option>
-            {% for c in courses %}
-            <option value="{{ c.id }}"
-              data-code="{{ c.code|escapejs }}"
-              data-title="{{ c.title|escapejs }}"
-              data-programme="{{ c.programme.id }}"
-              data-programme-code="{{ c.programme.code|escapejs }}"
-              data-programme-name="{{ c.programme.name|escapejs }}"
-              data-year="{{ c.study_year }}"
-              data-semester="{{ c.semester }}"
-              data-lecturer="{{ c.lecturer.name|default:''|escapejs }}"
-              data-is-lab="{{ c.is_lab|yesno:'true,false' }}"
-              data-is-exam="{{ c.is_exam|yesno:'true,false' }}">
-              {{ c.code }} — {{ c.title|truncatechars:55 }}
-            </option>
-            {% endfor %}
-          </select>
+          <label class="form-label fw-semibold">Search Course</label>
+          <div class="position-relative" style="max-width:540px">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input type="text" id="courSearch" class="form-control" placeholder="Type course code or name…" autocomplete="off">
+              <button class="btn btn-outline-secondary" type="button" id="courSearchClear" style="display:none">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div id="courSearchResults" class="list-group shadow position-absolute w-100" style="z-index:200;display:none;max-height:240px;overflow-y:auto;top:100%;margin-top:2px"></div>
+          </div>
+          <div class="form-text text-muted mt-1">Results filtered by selected semester</div>
         </div>
       </div>
 
-      <!-- Content (shown after selection) -->
+      <!-- Selected course detail panel (shown after search-select) -->
       <div id="courMgmtContent" style="display:none">
 
         <!-- Course info card -->
         <div class="card shadow-sm mb-4">
-          <div class="card-header bg-primary text-white fw-bold">
-            <i class="bi bi-info-circle me-2"></i> Course Details
+          <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-info-circle me-2"></i> Course Details</span>
+            <button class="btn btn-sm btn-outline-light" id="courDetailBack">
+              <i class="bi bi-arrow-left me-1"></i>Back to list
+            </button>
           </div>
           <div class="card-body">
             <div class="row g-3">
@@ -931,9 +940,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                 <thead class="table-dark">
                   <tr><th>Programme Code</th><th>Programme Name</th><th>Study Year</th><th>Male</th><th>Female</th><th>Total</th></tr>
                 </thead>
-                <tbody id="courStudentsBody">
-                  <tr><td colspan="6" class="text-center text-muted py-3">Select a course above.</td></tr>
-                </tbody>
+                <tbody id="courStudentsBody"></tbody>
               </table>
             </div>
           </div>
@@ -945,7 +952,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
             <i class="bi bi-clock-history me-2"></i> Course Schedule
           </div>
           <div class="card-body p-0">
-            <div id="courScheduleSpinner" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span> Loading…</div>
+            <div id="courScheduleSpinner" class="text-center py-4" style="display:none"><span class="spinner-border spinner-border-sm"></span> Loading…</div>
             <div class="table-responsive" id="courScheduleWrap" style="display:none">
               <table class="table table-sm table-hover mb-0">
                 <thead class="table-dark sticky-top">
@@ -961,12 +968,37 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         </div>
 
       </div><!-- /courMgmtContent -->
+
+      <!-- ── Unassigned Courses ────────────────────────────────────── -->
+      <div class="card shadow-sm mb-4" id="courUnassignedCard">
+        <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-exclamation-triangle me-2"></i> Courses Without a Lecturer</span>
+          <span class="badge bg-dark" id="courUnassignedCount">0</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height:360px;overflow-y:auto">
+            <table class="table table-sm table-striped mb-0">
+              <thead class="table-dark sticky-top">
+                <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th></tr>
+              </thead>
+              <tbody id="courUnassignedBody">
+                <tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /section-courses -->
 
     <!-- Embedded data for JS (lecturer & course management) -->
     <script>
     const ALL_COURSES_DATA = [
-      {% for c in courses %}{"id":{{ c.id }},"code":"{{ c.code|escapejs }}","title":"{{ c.title|escapejs }}","programme_code":"{{ c.programme.code|escapejs }}","study_year":{{ c.study_year }},"semester":{{ c.semester }},"lecturer_id":{{ c.lecturer_id|default:"null" }}}{% if not forloop.last %},{% endif %}
+      {% for c in courses %}{"id":{{ c.id }},"code":"{{ c.code|escapejs }}","title":"{{ c.title|escapejs }}","programme_id":{{ c.programme.id }},"programme_code":"{{ c.programme.code|escapejs }}","programme_name":"{{ c.programme.name|escapejs }}","study_year":{{ c.study_year }},"semester":{{ c.semester }},"lecturer_id":{{ c.lecturer_id|default:"null" }},"lecturer_name":"{{ c.lecturer.name|default:''|escapejs }}","is_lab":{{ c.is_lab|yesno:'true,false' }},"is_exam":{{ c.is_exam|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+    const ALL_LECTURERS_DATA = [
+      {% for l in lecturers %}{"id":{{ l.id }},"name":"{{ l.name|escapejs }}","email":"{{ l.email|escapejs }}","full_time":{{ l.is_full_time|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}
       {% endfor %}
     ];
     const STUDENT_COUNTS_MAP = {
