@@ -135,6 +135,9 @@ def admin_dashboard(request):
             'courses': courses,
             'lecturers': lecturers,
             'timetable': timetable,
+            'total_male': sum(sc.male_count for sc in student_counts),
+            'total_female': sum(sc.female_count for sc in student_counts),
+            'total_students': sum(sc.total_count for sc in student_counts),
         })
 
     context = {

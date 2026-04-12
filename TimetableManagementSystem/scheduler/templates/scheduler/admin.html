@@ -567,12 +567,9 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                   <tfoot class="table-secondary fw-bold">
                     <tr>
                       <td colspan="2">Total</td>
-                      <td>{% with total_m=0 %}{% for sc in sd.student_counts %}{{ sc.male_count|add:total_m }}{% endfor %}{% endwith %}</td>
-                      <td></td>
-                      <td>
-                        {% with t=0 %}{% for sc in sd.student_counts %}{% endfor %}{% endwith %}
-                        {{ sd.student_counts|length }} entries
-                      </td>
+                      <td>{{ sd.total_male }}</td>
+                      <td>{{ sd.total_female }}</td>
+                      <td>{{ sd.total_students }}</td>
                     </tr>
                   </tfoot>
                   {% endif %}
@@ -824,6 +821,18 @@ document.querySelectorAll('.admin-sidebar .nav-item a').forEach(link => {
   link.addEventListener('click', function(e) {
     e.preventDefault();
     const section = this.dataset.section;
+    // Collapse any open accordion items in the current section before hiding it
+    const currentSection = document.querySelector('.admin-section.active');
+    if (currentSection) {
+      currentSection.querySelectorAll('.accordion-collapse.show').forEach(el => {
+        el.classList.remove('show');
+        el.classList.add('collapse');
+      });
+      currentSection.querySelectorAll('.accordion-button:not(.collapsed)').forEach(btn => {
+        btn.classList.add('collapsed');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    }
     // Update active link
     document.querySelectorAll('.admin-sidebar .nav-item a').forEach(l => l.classList.remove('active'));
     this.classList.add('active');
