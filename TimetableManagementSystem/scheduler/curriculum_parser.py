@@ -185,17 +185,22 @@ def parse_curriculum(file_obj):
                 partial_map = candidate
 
         if header_row_idx is None:
-            # Use best partial match if found, else row 0 for a useful error
+            # Use best partial match if found, else row 0
             if partial_idx is not None:
                 header_row_idx = partial_idx
                 col_map = partial_map
             else:
+                # Default to row 0 — the data-driven fallback below may still rescue it
+                header_row_idx = 0
                 col_map = _detect_columns(rows[0])
 
         # ── Data-driven fallback: if course_name is missing but course_code is found,
         # check whether the course_code column actually holds long descriptive names
         # (mismatched header). If so, treat the S/N column as course_code instead.
-        if 'course_name' not in col_map and 'course_code' in col_map and header_row_idx is not None:
+        # This handles sheets where columns are labelled in wrong order, e.g.:
+        #   ['Programme', 'S/N', 'Course Code', 'Study Period']
+        # where 'S/N' really holds codes and 'Course Code' really holds names.
+        if 'course_name' not in col_map and 'course_code' in col_map:
             data_rows = rows[header_row_idx + 1: header_row_idx + 6]
             code_col_vals = [str(r[col_map['course_code']]) for r in data_rows if r[col_map['course_code']]]
             # If the "code" column values look like long names (avg length > 15), it's actually the name column
