@@ -218,6 +218,8 @@ def coordinator_view(request):
         'schools_detail': schools_detail,
         'university_total_students': university_total_students,
         'total_room_capacity': total_room_capacity,
+        'all_student_counts': StudentCount.objects.select_related('programme')
+            .order_by('programme__code', 'study_year'),
     }
     return render(request, 'scheduler/coordinator.html', context)
 
@@ -704,6 +706,12 @@ class TimetableEntryViewSet(viewsets.ModelViewSet):
         exam_only = self.request.query_params.get('exam_only')
         if exam_only is not None:
             qs = qs.filter(is_exam=bool(int(exam_only)))
+        lecturer = self.request.query_params.get('lecturer')
+        if lecturer:
+            qs = qs.filter(lecturer_id=lecturer)
+        course_param = self.request.query_params.get('course')
+        if course_param:
+            qs = qs.filter(course_id=course_param)
         return qs
 
     def perform_create(self, serializer):

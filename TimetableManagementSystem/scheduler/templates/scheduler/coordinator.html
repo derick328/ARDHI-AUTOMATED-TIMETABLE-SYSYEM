@@ -78,6 +78,16 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
             <i class="bi bi-calendar3"></i> View Timetable
           </a>
         </li>
+        <li class="nav-item">
+          <a href="#" data-section="lecturers">
+            <i class="bi bi-person-badge"></i> Lecturer Management
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" data-section="courses">
+            <i class="bi bi-book"></i> Course Management
+          </a>
+        </li>
       </ul>
     </nav>
 
@@ -753,6 +763,218 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
 
     </div><!-- /section-timetable -->
 
+    <!-- ══ SECTION: Lecturer Management ══════════════════════════ -->
+    <div id="section-lecturers" class="coord-section">
+      <h4 class="fw-bold mb-4"><i class="bi bi-person-badge text-primary"></i> Lecturer Management</h4>
+
+      <!-- Lecturer selector -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <label class="form-label fw-semibold">Select Lecturer</label>
+          <select id="lectSelect" class="form-select" style="max-width:420px">
+            <option value="">— Choose a lecturer —</option>
+            {% for l in lecturers %}
+            <option value="{{ l.id }}"
+              data-name="{{ l.name|escapejs }}"
+              data-email="{{ l.email|escapejs }}"
+              data-fulltime="{{ l.is_full_time|yesno:'true,false' }}">
+              {{ l.name }}{% if not l.is_full_time %} (Part-time){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Content (shown after selection) -->
+      <div id="lectMgmtContent" style="display:none">
+
+        <!-- Lecturer info + stats -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-person-circle me-2"></i><span id="lectMgmtName" class="fw-bold"></span></span>
+            <span class="badge bg-light text-dark" id="lectMgmtType"></span>
+          </div>
+          <div class="card-body">
+            <div class="text-muted small mb-3" id="lectMgmtEmail"></div>
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <div class="border rounded text-center py-3">
+                  <div class="fs-4 fw-bold text-primary" id="statCoursesCount">—</div>
+                  <div class="small text-muted">Courses Assigned</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="border rounded text-center py-3">
+                  <div class="fs-4 fw-bold text-success" id="statSessionsCount">—</div>
+                  <div class="small text-muted">Teaching Sessions / Week</div>
+                </div>
+              </div>
+              <div class="col-sm-4">
+                <div class="border rounded text-center py-3">
+                  <div class="fs-4 fw-bold text-warning" id="statHoursCount">—</div>
+                  <div class="small text-muted">Total Teaching Hours / Week</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assigned Courses -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-secondary text-white fw-bold">
+            <i class="bi bi-book me-2"></i> Assigned Courses
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped mb-0">
+                <thead class="table-dark">
+                  <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th></tr>
+                </thead>
+                <tbody id="lectCoursesBody">
+                  <tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Timetable -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-dark text-white fw-bold">
+            <i class="bi bi-calendar3-week me-2"></i> Weekly Timetable
+          </div>
+          <div class="card-body p-0">
+            <div id="lectTimetableSpinner" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span> Loading…</div>
+            <div class="table-responsive" id="lectTimetableWrap" style="display:none">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="table-dark sticky-top">
+                  <tr><th>Day</th><th>Time</th><th>Course Code</th><th>Course Title</th><th>Venue</th><th>Degree Programme</th></tr>
+                </thead>
+                <tbody id="lectTimetableBody"></tbody>
+              </table>
+            </div>
+            <div id="lectTimetableEmpty" class="text-center text-muted py-4" style="display:none">
+              <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>No timetable entries for this lecturer yet.
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /lectMgmtContent -->
+    </div><!-- /section-lecturers -->
+
+    <!-- ══ SECTION: Course Management ════════════════════════════ -->
+    <div id="section-courses" class="coord-section">
+      <h4 class="fw-bold mb-4"><i class="bi bi-book text-primary"></i> Course Management</h4>
+
+      <!-- Course selector -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <label class="form-label fw-semibold">Select Course</label>
+          <select id="courSelect" class="form-select" style="max-width:540px">
+            <option value="">— Choose a course —</option>
+            {% for c in courses %}
+            <option value="{{ c.id }}"
+              data-code="{{ c.code|escapejs }}"
+              data-title="{{ c.title|escapejs }}"
+              data-programme="{{ c.programme.id }}"
+              data-programme-code="{{ c.programme.code|escapejs }}"
+              data-programme-name="{{ c.programme.name|escapejs }}"
+              data-year="{{ c.study_year }}"
+              data-semester="{{ c.semester }}"
+              data-lecturer="{{ c.lecturer.name|default:''|escapejs }}"
+              data-is-lab="{{ c.is_lab|yesno:'true,false' }}"
+              data-is-exam="{{ c.is_exam|yesno:'true,false' }}">
+              {{ c.code }} — {{ c.title|truncatechars:55 }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Content (shown after selection) -->
+      <div id="courMgmtContent" style="display:none">
+
+        <!-- Course info card -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-primary text-white fw-bold">
+            <i class="bi bi-info-circle me-2"></i> Course Details
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <table class="table table-sm mb-0">
+                  <tr><th class="text-muted" style="width:38%">Code</th><td id="cInfCode" class="fw-bold"></td></tr>
+                  <tr><th class="text-muted">Title</th><td id="cInfTitle"></td></tr>
+                  <tr><th class="text-muted">Programme</th><td id="cInfProg"></td></tr>
+                  <tr><th class="text-muted">Study Year</th><td id="cInfYear"></td></tr>
+                  <tr><th class="text-muted">Semester</th><td id="cInfSem"></td></tr>
+                </table>
+              </div>
+              <div class="col-md-6">
+                <table class="table table-sm mb-0">
+                  <tr><th class="text-muted" style="width:38%">Lecturer</th><td id="cInfLect"></td></tr>
+                  <tr><th class="text-muted">Type</th><td id="cInfType"></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Intake -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-success text-white fw-bold">
+            <i class="bi bi-people me-2"></i> Student Intake
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped mb-0">
+                <thead class="table-dark">
+                  <tr><th>Programme Code</th><th>Programme Name</th><th>Study Year</th><th>Male</th><th>Female</th><th>Total</th></tr>
+                </thead>
+                <tbody id="courStudentsBody">
+                  <tr><td colspan="6" class="text-center text-muted py-3">Select a course above.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Course Schedule -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-dark text-white fw-bold">
+            <i class="bi bi-clock-history me-2"></i> Course Schedule
+          </div>
+          <div class="card-body p-0">
+            <div id="courScheduleSpinner" class="text-center py-4"><span class="spinner-border spinner-border-sm"></span> Loading…</div>
+            <div class="table-responsive" id="courScheduleWrap" style="display:none">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="table-dark sticky-top">
+                  <tr><th>Day</th><th>Time</th><th>Venue (Room)</th><th>Degree Programme</th><th>Lecturer</th></tr>
+                </thead>
+                <tbody id="courScheduleBody"></tbody>
+              </table>
+            </div>
+            <div id="courScheduleEmpty" class="text-center text-muted py-4" style="display:none">
+              <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>No schedule found for this course yet.
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /courMgmtContent -->
+    </div><!-- /section-courses -->
+
+    <!-- Embedded data for JS (lecturer & course management) -->
+    <script>
+    const ALL_COURSES_DATA = [
+      {% for c in courses %}{"id":{{ c.id }},"code":"{{ c.code|escapejs }}","title":"{{ c.title|escapejs }}","programme_code":"{{ c.programme.code|escapejs }}","study_year":{{ c.study_year }},"semester":{{ c.semester }},"lecturer_id":{{ c.lecturer_id|default:"null" }}}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+    const STUDENT_COUNTS_MAP = {
+      {% for sc in all_student_counts %}"{{ sc.programme_id }}_{{ sc.study_year }}":{"male":{{ sc.male_count }},"female":{{ sc.female_count }},"total":{{ sc.total_count }},"prog_code":"{{ sc.programme.code|escapejs }}","prog_name":"{{ sc.programme.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    };
+    </script>
+
   </div><!-- /coord-main -->
 </div><!-- /coord-layout -->
 
@@ -1345,6 +1567,165 @@ function loadMergeGroupsSummary() {
 }
 
 document.getElementById('btnRefreshMergeGroups').addEventListener('click', loadMergeGroupsSummary);
+
+// ── Lecturer Management ───────────────────────────────────────────
+const DAY_ORDER = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4 };
+
+function parseHours(t) {
+  const parts = t.split(':');
+  return parseInt(parts[0], 10) + parseInt(parts[1], 10) / 60;
+}
+
+document.getElementById('lectSelect').addEventListener('change', async function() {
+  const lid = this.value;
+  const content = document.getElementById('lectMgmtContent');
+  if (!lid) { content.style.display = 'none'; return; }
+
+  const opt = this.selectedOptions[0];
+  document.getElementById('lectMgmtName').textContent  = opt.dataset.name;
+  document.getElementById('lectMgmtEmail').innerHTML   = '<i class="bi bi-envelope me-1"></i>' + opt.dataset.email;
+  document.getElementById('lectMgmtType').textContent  = opt.dataset.fulltime === 'true' ? 'Full-time' : 'Part-time';
+  content.style.display = 'block';
+
+  // Assigned courses (client-side filter)
+  const assigned = ALL_COURSES_DATA.filter(c => c.lecturer_id == lid);
+  document.getElementById('statCoursesCount').textContent = assigned.length;
+  const tbody = document.getElementById('lectCoursesBody');
+  if (assigned.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No courses assigned to this lecturer.</td></tr>';
+  } else {
+    tbody.innerHTML = assigned.map(c =>
+      `<tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.title}</td>
+        <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+        <td>Year ${c.study_year}</td>
+        <td>Sem ${c.semester}</td>
+      </tr>`
+    ).join('');
+  }
+
+  // Timetable entries (API fetch)
+  document.getElementById('lectTimetableSpinner').style.display = 'block';
+  document.getElementById('lectTimetableWrap').style.display   = 'none';
+  document.getElementById('lectTimetableEmpty').style.display  = 'none';
+
+  try {
+    const entries = await fetch(`/api/timetable-entries/?format=json&lecturer=${lid}`)
+      .then(r => r.json());
+
+    const teaching = entries.filter(e => !e.is_exam);
+    const totalHours = teaching.reduce(
+      (sum, e) => sum + parseHours(e.timeslot_end) - parseHours(e.timeslot_start), 0
+    );
+
+    document.getElementById('statSessionsCount').textContent = teaching.length;
+    document.getElementById('statHoursCount').textContent    = totalHours % 1 === 0
+      ? totalHours + 'h'
+      : totalHours.toFixed(1) + 'h';
+
+    document.getElementById('lectTimetableSpinner').style.display = 'none';
+    if (entries.length === 0) {
+      document.getElementById('lectTimetableEmpty').style.display = 'block';
+    } else {
+      const sorted = [...entries].sort((a, b) =>
+        (DAY_ORDER[a.timeslot_day] ?? 9) - (DAY_ORDER[b.timeslot_day] ?? 9) ||
+        a.timeslot_start.localeCompare(b.timeslot_start)
+      );
+      document.getElementById('lectTimetableBody').innerHTML = sorted.map(e =>
+        `<tr>
+          <td>${e.timeslot_day_display}</td>
+          <td class="text-nowrap">${e.timeslot_start.slice(0,5)}–${e.timeslot_end.slice(0,5)}</td>
+          <td><span class="badge bg-primary">${e.course_code}</span></td>
+          <td class="small">${e.course_title}</td>
+          <td class="small fw-semibold">${e.room_name}</td>
+          <td class="small">${e.programme_code} <span class="text-muted">— ${e.programme_name}</span></td>
+        </tr>`
+      ).join('');
+      document.getElementById('lectTimetableWrap').style.display = 'block';
+    }
+  } catch (err) {
+    document.getElementById('lectTimetableSpinner').style.display = 'none';
+    document.getElementById('lectTimetableEmpty').innerHTML =
+      '<div class="alert alert-danger mx-3">Failed to load timetable data.</div>';
+    document.getElementById('lectTimetableEmpty').style.display = 'block';
+  }
+});
+
+// ── Course Management ─────────────────────────────────────────────
+document.getElementById('courSelect').addEventListener('change', async function() {
+  const cid = this.value;
+  const content = document.getElementById('courMgmtContent');
+  if (!cid) { content.style.display = 'none'; return; }
+
+  const opt = this.selectedOptions[0];
+  content.style.display = 'block';
+
+  // Info card
+  document.getElementById('cInfCode').textContent  = opt.dataset.code;
+  document.getElementById('cInfTitle').textContent = opt.dataset.title;
+  document.getElementById('cInfProg').innerHTML    =
+    `<span class="badge bg-secondary me-1">${opt.dataset.programmeCode}</span>${opt.dataset.programmeName}`;
+  document.getElementById('cInfYear').textContent  = 'Year ' + opt.dataset.year;
+  document.getElementById('cInfSem').textContent   = 'Semester ' + opt.dataset.semester;
+  document.getElementById('cInfLect').textContent  = opt.dataset.lecturer || '— Unassigned —';
+  const typeBadges = [];
+  if (opt.dataset.isLab  === 'true') typeBadges.push('<span class="badge bg-info text-dark">Lab</span>');
+  if (opt.dataset.isExam === 'true') typeBadges.push('<span class="badge bg-dark">Exam</span>');
+  document.getElementById('cInfType').innerHTML = typeBadges.length ? typeBadges.join(' ') : '<span class="badge bg-light text-dark">Lecture</span>';
+
+  // Student intake (from embedded map)
+  const key = `${opt.dataset.programme}_${opt.dataset.year}`;
+  const sc  = STUDENT_COUNTS_MAP[key];
+  const studBody = document.getElementById('courStudentsBody');
+  if (sc) {
+    studBody.innerHTML = `<tr>
+      <td><span class="badge bg-secondary">${sc.prog_code}</span></td>
+      <td>${sc.prog_name}</td>
+      <td>Year ${opt.dataset.year}</td>
+      <td>${sc.male}</td>
+      <td>${sc.female}</td>
+      <td><strong>${sc.total}</strong></td>
+    </tr>`;
+  } else {
+    studBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No student count data for this programme and year.</td></tr>';
+  }
+
+  // Course schedule (API fetch)
+  document.getElementById('courScheduleSpinner').style.display = 'block';
+  document.getElementById('courScheduleWrap').style.display   = 'none';
+  document.getElementById('courScheduleEmpty').style.display  = 'none';
+
+  try {
+    const entries = await fetch(`/api/timetable-entries/?format=json&course=${cid}`)
+      .then(r => r.json());
+
+    document.getElementById('courScheduleSpinner').style.display = 'none';
+    if (entries.length === 0) {
+      document.getElementById('courScheduleEmpty').style.display = 'block';
+    } else {
+      const sorted = [...entries].sort((a, b) =>
+        (DAY_ORDER[a.timeslot_day] ?? 9) - (DAY_ORDER[b.timeslot_day] ?? 9) ||
+        a.timeslot_start.localeCompare(b.timeslot_start)
+      );
+      document.getElementById('courScheduleBody').innerHTML = sorted.map(e =>
+        `<tr>
+          <td>${e.timeslot_day_display}</td>
+          <td class="text-nowrap">${e.timeslot_start.slice(0,5)}–${e.timeslot_end.slice(0,5)}</td>
+          <td class="fw-semibold">${e.room_name}</td>
+          <td class="small">${e.programme_code} <span class="text-muted">— ${e.programme_name}</span></td>
+          <td class="small text-muted">${e.lecturer_name || '—'}</td>
+        </tr>`
+      ).join('');
+      document.getElementById('courScheduleWrap').style.display = 'block';
+    }
+  } catch (err) {
+    document.getElementById('courScheduleSpinner').style.display = 'none';
+    document.getElementById('courScheduleEmpty').innerHTML =
+      '<div class="alert alert-danger mx-3">Failed to load schedule data.</div>';
+    document.getElementById('courScheduleEmpty').style.display = 'block';
+  }
+});
 </script>
 
 {% endblock %}
