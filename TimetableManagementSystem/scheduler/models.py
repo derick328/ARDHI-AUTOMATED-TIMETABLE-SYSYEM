@@ -79,7 +79,7 @@ class Timeslot(models.Model):
 
 
 class Course(models.Model):
-    code = models.CharField(max_length=20, unique=True)
+    code = models.CharField(max_length=20)
     title = models.CharField(max_length=300)
     programme = models.ForeignKey(Programme, on_delete=models.CASCADE, related_name='courses')
     semester = models.PositiveSmallIntegerField()   # 1 or 2
@@ -97,6 +97,7 @@ class Course(models.Model):
 
     class Meta:
         ordering = ['programme', 'study_year', 'semester', 'code']
+        unique_together = ('code', 'programme')
 
     def __str__(self):
         return f"{self.code} — {self.title}"
