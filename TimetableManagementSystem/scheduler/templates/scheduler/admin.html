@@ -546,29 +546,25 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
           <!-- School nav tabs -->
           <ul class="nav nav-tabs px-3 pt-2" id="schoolTabs-{{ sd.school.id }}">
             <li class="nav-item">
-              <a class="nav-link active" data-bs-toggle="tab"
-                href="#stud-{{ sd.school.id }}">
+              <a class="nav-link active" data-bs-toggle="tab" href="#stud-{{ sd.school.id }}">
                 <i class="bi bi-people"></i> Student Population
                 <span class="badge bg-secondary ms-1">{{ sd.student_counts|length }}</span>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab"
-                href="#lect-{{ sd.school.id }}">
+              <a class="nav-link" data-bs-toggle="tab" href="#lect-{{ sd.school.id }}">
                 <i class="bi bi-person-badge"></i> Lecturers
                 <span class="badge bg-secondary ms-1">{{ sd.lecturers|length }}</span>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab"
-                href="#cour-{{ sd.school.id }}">
+              <a class="nav-link" data-bs-toggle="tab" href="#cour-{{ sd.school.id }}">
                 <i class="bi bi-book"></i> Courses
                 <span class="badge bg-secondary ms-1">{{ sd.courses|length }}</span>
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" data-bs-toggle="tab"
-                href="#tt-{{ sd.school.id }}">
+              <a class="nav-link" data-bs-toggle="tab" href="#tt-{{ sd.school.id }}">
                 <i class="bi bi-calendar3"></i> Timetable
                 <span class="badge bg-secondary ms-1">{{ sd.timetable|length }}</span>
               </a>
@@ -578,13 +574,18 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
           <div class="tab-content p-0">
 
             <!-- Student Population -->
-            <div class="tab-pane fade show active" id="stud-{{ sd.school.id }}">
-              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+            <div class="tab-pane fade show active" id="stud-{{ sd.school.id }}" data-pagtable>
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm school-search" placeholder="Search student population…">
+                <span class="text-muted small school-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top">
                     <tr><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th></tr>
                   </thead>
-                  <tbody>
+                  <tbody class="school-tab-body">
                     {% for sc in sd.student_counts %}
                     <tr>
                       <td>{{ sc.programme.code }}</td>
@@ -594,7 +595,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><strong>{{ sc.total_count }}</strong></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-3">No student population data for this school</td></tr>
+                    <tr class="empty-row"><td colspan="5" class="text-center text-muted py-3">No student population data for this school</td></tr>
                     {% endfor %}
                   </tbody>
                   {% if sd.student_counts %}
@@ -609,43 +610,53 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                   {% endif %}
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top school-pag-wrap" style="display:none!important"></div>
             </div>
 
             <!-- Lecturers -->
-            <div class="tab-pane fade" id="lect-{{ sd.school.id }}">
-              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+            <div class="tab-pane fade" id="lect-{{ sd.school.id }}" data-pagtable>
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm school-search" placeholder="Search lecturers…">
+                <span class="text-muted small school-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top">
                     <tr><th>#</th><th>Name</th><th>Email</th><th>Courses Assigned</th></tr>
                   </thead>
-                  <tbody>
+                  <tbody class="school-tab-body">
                     {% for l in sd.lecturers %}
                     <tr>
                       <td>{{ forloop.counter }}</td>
                       <td><strong>{{ l.name }}</strong></td>
                       <td class="small text-muted">{{ l.email }}</td>
                       <td class="small">
-                        {% for c in sd.courses %}{% if c.lecturer_id == l.id %}
-                          <span class="badge bg-primary me-1">{{ c.code }}</span>
-                        {% endif %}{% endfor %}
+                        {% for c in sd.courses %}{% if c.lecturer_id == l.id %}<span class="badge bg-primary me-1">{{ c.code }}</span>{% endif %}{% endfor %}
                       </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">No lecturers assigned yet</td></tr>
+                    <tr class="empty-row"><td colspan="4" class="text-center text-muted py-3">No lecturers assigned yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top school-pag-wrap" style="display:none!important"></div>
             </div>
 
             <!-- Courses -->
-            <div class="tab-pane fade" id="cour-{{ sd.school.id }}">
-              <div class="table-responsive" style="max-height:320px;overflow-y:auto">
+            <div class="tab-pane fade" id="cour-{{ sd.school.id }}" data-pagtable>
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm school-search" placeholder="Search courses…">
+                <span class="text-muted small school-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top">
                     <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th></tr>
                   </thead>
-                  <tbody>
+                  <tbody class="school-tab-body">
                     {% for c in sd.courses %}
                     <tr>
                       <td><strong>{{ c.code }}</strong></td>
@@ -656,17 +667,23 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td class="small text-muted">{{ c.lecturer.name|default:"—" }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="text-center text-muted py-3">No courses uploaded for this school</td></tr>
+                    <tr class="empty-row"><td colspan="6" class="text-center text-muted py-3">No courses uploaded for this school</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top school-pag-wrap" style="display:none!important"></div>
             </div>
 
             <!-- Timetable -->
-            <div class="tab-pane fade" id="tt-{{ sd.school.id }}">
+            <div class="tab-pane fade" id="tt-{{ sd.school.id }}" {% if sd.timetable %}data-pagtable{% endif %}>
               {% if sd.timetable %}
-              <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm school-search" placeholder="Search timetable…">
+                <span class="text-muted small school-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                   <thead class="table-dark sticky-top">
                     <tr>
@@ -675,7 +692,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <th>Room</th><th>Day</th><th>Time</th><th>Lecturer</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="school-tab-body">
                     {% for entry in sd.timetable %}
                     <tr>
                       <td class="small"><strong>{{ entry.programme.code }}</strong></td>
@@ -692,6 +709,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top school-pag-wrap" style="display:none!important"></div>
               {% else %}
               <div class="text-center text-muted py-4">
                 <i class="bi bi-calendar-x fs-2 d-block mb-2"></i>
@@ -1030,6 +1048,102 @@ document.querySelectorAll('.btn-delete-user').forEach(btn => {
     fetch(`/api/admin/delete-user/${this.dataset.uid}/`, {
       method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }
     }).then(() => location.reload());
+  });
+});
+
+// ── School tab search + pagination ───────────────────────────────
+const SCHOOL_PAGE_SIZE = 15;
+
+function initSchoolTab(pane) {
+  const tbody    = pane.querySelector('.school-tab-body');
+  const searchEl = pane.querySelector('.school-search');
+  const pagWrap  = pane.querySelector('.school-pag-wrap');
+  const pageInfo = pane.querySelector('.school-page-info');
+  if (!tbody || !searchEl) return;
+
+  // Collect all data rows (exclude empty-state rows)
+  const allRows = Array.from(tbody.querySelectorAll('tr:not(.empty-row)'));
+  if (allRows.length === 0) return;  // nothing to paginate
+
+  // Show pagination footer
+  pagWrap.style.removeProperty('display');
+
+  let filteredRows = [...allRows];
+  let currentPage  = 1;
+
+  function renderPage(page) {
+    currentPage = page;
+    const total  = filteredRows.length;
+    const pages  = Math.max(1, Math.ceil(total / SCHOOL_PAGE_SIZE));
+    const start  = (page - 1) * SCHOOL_PAGE_SIZE;
+    const end    = Math.min(start + SCHOOL_PAGE_SIZE, total);
+
+    // Show/hide rows
+    allRows.forEach(r => { r.style.display = 'none'; });
+    filteredRows.slice(start, end).forEach(r => { r.style.display = ''; });
+
+    // Page info
+    pageInfo.textContent = total === 0 ? 'No results' : `${start + 1}–${end} of ${total}`;
+
+    // Rebuild pagination buttons
+    pagWrap.innerHTML = '';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'btn btn-sm btn-outline-secondary';
+    prevBtn.textContent = 'Prev';
+    prevBtn.disabled = page <= 1;
+    prevBtn.addEventListener('click', () => renderPage(currentPage - 1));
+    pagWrap.appendChild(prevBtn);
+
+    const numsWrap = document.createElement('span');
+    numsWrap.className = 'd-flex gap-1';
+    const maxBtns = 7;
+    let startP = Math.max(1, page - Math.floor(maxBtns / 2));
+    let endP   = Math.min(pages, startP + maxBtns - 1);
+    if (endP - startP < maxBtns - 1) startP = Math.max(1, endP - maxBtns + 1);
+    for (let p = startP; p <= endP; p++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm ' + (p === page ? 'btn-primary' : 'btn-outline-secondary');
+      btn.textContent = p;
+      btn.addEventListener('click', () => renderPage(p));
+      numsWrap.appendChild(btn);
+    }
+    pagWrap.appendChild(numsWrap);
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn-sm btn-outline-secondary';
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = page >= pages;
+    nextBtn.addEventListener('click', () => renderPage(currentPage + 1));
+    pagWrap.appendChild(nextBtn);
+  }
+
+  searchEl.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    filteredRows = q
+      ? allRows.filter(r => r.textContent.toLowerCase().includes(q))
+      : [...allRows];
+    renderPage(1);
+  });
+
+  renderPage(1);
+}
+
+// Init a pane once, guard with data-paginit flag
+function maybeInitPane(pane) {
+  if (!pane || !pane.hasAttribute('data-pagtable') || pane.dataset.paginit) return;
+  pane.dataset.paginit = '1';
+  initSchoolTab(pane);
+}
+
+// Init all currently-active (show) panes on page load
+document.querySelectorAll('[data-pagtable].show').forEach(maybeInitPane);
+
+// Init any pane the first time its tab link is clicked
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(link => {
+  link.addEventListener('shown.bs.tab', function() {
+    const pane = document.querySelector(this.getAttribute('href'));
+    maybeInitPane(pane);
   });
 });
 
