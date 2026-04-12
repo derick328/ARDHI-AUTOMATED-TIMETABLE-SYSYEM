@@ -89,6 +89,11 @@ class Course(models.Model):
     )
     is_exam = models.BooleanField(default=False)
     is_lab = models.BooleanField(default=False)
+    # Shared-venue group: courses with the same non-null value are scheduled
+    # into the same room+timeslot (combined student count used for room sizing).
+    merge_group = models.CharField(max_length=100, blank=True, null=True, default=None,
+                                   help_text='Leave blank for no sharing. '
+                                             'Courses with the same value share a room.')
 
     class Meta:
         ordering = ['programme', 'study_year', 'semester', 'code']
