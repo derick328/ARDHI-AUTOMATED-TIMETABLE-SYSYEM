@@ -264,6 +264,7 @@ def parse_curriculum(file_obj):
                 Course.objects.update_or_create(
                     code=course_code,
                     programme=programme,
+                    section='',
                     defaults={
                         'title': course_name,
                         'semester': semester,
