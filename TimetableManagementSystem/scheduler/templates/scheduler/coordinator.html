@@ -238,6 +238,100 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
           </div>
         </div>
 
+        <!-- Shared Venue (Merge Group) Manager -->
+        <div class="col-12">
+          <div class="card shadow-sm border-warning">
+            <div class="card-header fw-bold d-flex justify-content-between align-items-center"
+              style="background:#fff3cd">
+              <span><i class="bi bi-people-fill text-warning"></i> Shared Venue — Course Merging</span>
+              <button class="btn btn-sm btn-outline-secondary" type="button"
+                data-bs-toggle="collapse" data-bs-target="#mergePanel">
+                <i class="bi bi-chevron-down"></i> Show / Hide
+              </button>
+            </div>
+            <div class="collapse" id="mergePanel">
+              <div class="card-body">
+                <p class="text-muted small mb-3">
+                  Select two or more courses from <strong>different programmes</strong> that teach the same content.
+                  They will be scheduled into the <strong>same room and timeslot</strong>, with a room sized for
+                  their <strong>combined student count</strong>. Give the group a short label (e.g. <code>MATH_Y1S1</code>).
+                </p>
+
+                <div class="row g-2 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold mb-1">Filter by Programme</label>
+                    <select id="mergeProgrammeFilter" class="form-select form-select-sm">
+                      <option value="">All Programmes</option>
+                      {% for p in programmes %}
+                      <option value="{{ p.id }}">{{ p.code }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold mb-1">Filter by Year</label>
+                    <select id="mergeYearFilter" class="form-select form-select-sm">
+                      <option value="">All Years</option>
+                      <option value="1">Year 1</option>
+                      <option value="2">Year 2</option>
+                      <option value="3">Year 3</option>
+                      <option value="4">Year 4</option>
+                      <option value="5">Year 5</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-sm btn-secondary w-100" id="btnLoadMergeCourses">
+                      <i class="bi bi-search"></i> Load Courses
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Course list for selection -->
+                <div id="mergeCourseList" class="border rounded mb-3"
+                  style="max-height:260px;overflow-y:auto;background:#f8f9fa;padding:.5rem">
+                  <p class="text-muted text-center py-3 small">
+                    Use the filters above and click Load Courses.
+                  </p>
+                </div>
+
+                <!-- Merge group name + actions -->
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label fw-semibold mb-1">
+                      Merge Group Label
+                      <small class="text-muted fw-normal">(short, no spaces)</small>
+                    </label>
+                    <input type="text" id="mergeGroupName" class="form-control form-control-sm"
+                      placeholder="e.g. MATH_Y1_S1">
+                  </div>
+                  <div class="col-md-4">
+                    <button class="btn btn-warning w-100" id="btnApplyMerge">
+                      <i class="bi bi-link-45deg"></i> Merge Selected Courses
+                    </button>
+                  </div>
+                  <div class="col-md-4">
+                    <button class="btn btn-outline-danger w-100" id="btnClearMerge">
+                      <i class="bi bi-x-circle"></i> Clear Merge from Selected
+                    </button>
+                  </div>
+                </div>
+                <div id="mergeStatus" class="mt-2 small"></div>
+
+                <!-- Current merge groups summary -->
+                <hr>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <strong class="small">Current Merge Groups</strong>
+                  <button class="btn btn-xs btn-outline-secondary btn-sm" id="btnRefreshMergeGroups">
+                    <i class="bi bi-arrow-repeat"></i> Refresh
+                  </button>
+                </div>
+                <div id="mergeGroupsSummary" class="small text-muted">
+                  Click Refresh to view existing groups.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Export card -->
         <div class="col-12">
           <div class="card shadow-sm">

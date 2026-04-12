@@ -53,7 +53,7 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'code', 'title', 'programme', 'programme_name',
             'semester', 'study_year', 'lecturer', 'lecturer_name',
-            'is_exam', 'is_lab'
+            'is_exam', 'is_lab', 'merge_group'
         ]
 
 
