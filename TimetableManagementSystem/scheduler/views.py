@@ -310,21 +310,26 @@ class GenerateTimetableView(APIView):
 
         scheduler = HGCSAScheduler()
         try:
-            entries, conflicts = scheduler.run(
+            entries, conflicts, unplaced = scheduler.run(
                 programme_ids=programme_ids,
                 semester=int(semester) if semester else None,
                 study_years=[int(y) for y in study_years] if study_years else None,
                 exam_only=bool(exam_only),
             )
-        except RuntimeError as e:
+        except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        unplaced_codes = [c.code for c in unplaced] if unplaced else []
 
         log_action(
             request.user, 'GENERATE_TIMETABLE', 'TimetableEntry',
-            details=f"Generated {len(entries)} entries, {len(conflicts)} conflicts"
+            details=(
+                f"Generated {len(entries)} entries, {len(conflicts)} conflicts, "
+                f"{len(unplaced_codes)} unplaced: {unplaced_codes}"
+            )
         )
 
-        if not conflicts:
+        if not conflicts and not unplaced:
             lecturer_emails = list(
                 Lecturer.objects.filter(
                     timetable_entries__in=entries
@@ -338,6 +343,8 @@ class GenerateTimetableView(APIView):
             'entries_count': len(entries),
             'conflicts': conflicts,
             'is_conflict_free': len(conflicts) == 0,
+            'unplaced_count': len(unplaced_codes),
+            'unplaced_courses': unplaced_codes,
         })
 
 

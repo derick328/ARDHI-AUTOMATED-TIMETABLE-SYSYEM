@@ -891,14 +891,36 @@ function generate(examOnly) {
     body: JSON.stringify({ programme_ids, semester: sem, exam_only: examOnly })
   }).then(r => r.json()).then(data => {
     if (data.error) {
-      status.innerHTML = `<div class="alert alert-danger py-2">${data.error}</div>`;
+      status.innerHTML = `<div class="alert alert-danger py-2"><i class="bi bi-x-circle-fill"></i> ${data.error}</div>`;
+      return;
+    }
+    const conflictOk = data.is_conflict_free;
+    const hasUnplaced = data.unplaced_count > 0;
+    let html = '';
+
+    // Main result badge
+    if (conflictOk && !hasUnplaced) {
+      html += `<div class="alert alert-success py-2">
+        <i class="bi bi-check-circle-fill"></i> ✅ <strong>${data.entries_count}</strong> entries created — Conflict-free!
+      </div>`;
     } else {
-      const ok = data.is_conflict_free;
-      status.innerHTML = `<div class="alert alert-${ok ? 'success' : 'warning'} py-2">
-        <strong>${data.entries_count}</strong> entries created.
-        ${ok ? '✅ Conflict-free!' : '⚠️ ' + data.conflicts.length + ' conflict(s) found.'}
+      html += `<div class="alert alert-warning py-2">
+        <i class="bi bi-check-circle-fill text-success"></i> <strong>${data.entries_count}</strong> entries created.
+        ${!conflictOk ? `<br><i class="bi bi-exclamation-triangle-fill text-danger"></i> <strong>${data.conflicts.length}</strong> conflict(s) detected.` : ''}
       </div>`;
     }
+
+    // Unplaced courses warning (separate, non-blocking)
+    if (hasUnplaced) {
+      html += `<div class="alert alert-warning py-2 mt-1">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>${data.unplaced_count}</strong> course(s) could not be scheduled
+        (not enough rooms or timeslots for all constraints):<br>
+        <span class="font-monospace small">${data.unplaced_courses.join(', ')}</span><br>
+        <small class="text-muted">All other courses were scheduled successfully. To fix: add more rooms or check student group sizes.</small>
+      </div>`;
+    }
+    status.innerHTML = html;
   });
 }
 document.getElementById('btnGenerate').onclick = () => generate(false);

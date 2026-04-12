@@ -102,19 +102,12 @@ def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
         # Could not place this course — signal failure up the call stack
         return False
 
-    success = backtrack(0)
+    backtrack(0)
 
-    if not success:
-        # Some courses genuinely cannot be placed (e.g., not enough rooms).
-        # Return partial schedule with an error marker so the caller can report it.
-        still_unplaced = [
-            c for c in unscheduled
-            if not any(a['course'].id == c.id for a in scheduled)
-        ]
-        raise RuntimeError(
-            f"CSP backtracking failed: {len(still_unplaced)} course(s) could not be scheduled. "
-            f"Add more rooms/timeslots or reduce constraints. "
-            f"Unplaced: {[c.code for c in still_unplaced]}"
-        )
+    # Identify any courses that still could not be placed
+    placed_ids = {a['course'].id for a in scheduled}
+    unplaced = [c for c in unscheduled if c.id not in placed_ids]
 
-    return scheduled
+    # Return the partial schedule and the list of unplaced courses.
+    # The caller decides how to report unplaced courses — we never hard-fail here.
+    return scheduled, unplaced

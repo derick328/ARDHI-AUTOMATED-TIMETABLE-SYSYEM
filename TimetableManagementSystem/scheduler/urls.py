@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/timetable/generate/', views.GenerateTimetableView.as_view(), name='generate_timetable'),
     path('api/timetable/generate-advanced/', views.GenerateAdvancedTimetableView.as_view(), name='generate_advanced'),
     path('api/timetable/check-conflicts/', views.CheckConflictsView.as_view(), name='check_conflicts'),
+    path('api/timetable/clear/', views.ClearTimetableView.as_view(), name='clear_timetable'),
     path('api/timetable/edit/', views.EditTimetableEntryView.as_view(), name='edit_entry'),
     path('api/timetable/reschedule/', views.RescheduleTimetableEntryView.as_view(), name='reschedule_entry'),
     path('api/timetable/delete-entry/<int:pk>/', views.DeleteTimetableEntryView.as_view(), name='delete_entry'),
@@ -47,9 +48,6 @@ urlpatterns = [
 
     # ── Timeslot Seeder ───────────────────────────────────────────────────────────
     path('api/admin/seed-timeslots/', views.SeedTimeslotsView.as_view(), name='seed_timeslots'),
-
-    # ── Timetable Clear ───────────────────────────────────────────────────────────
-    path('api/timetable/clear/', views.ClearTimetableView.as_view(), name='clear_timetable'),
 
     # ── Bulk Clear (Uploaded Data) ────────────────────────────────────────────────
     path('api/admin/clear/rooms/', views.ClearRoomsView.as_view(), name='clear_rooms'),

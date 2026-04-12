@@ -69,8 +69,11 @@ class HGCSAScheduler:
         scheduled, unscheduled = greedy_assign(ordered_courses, rooms, timeslots, student_counts)
 
         # --- Phase 3: CSP + Backtracking ---
+        unplaced_courses = []
         if unscheduled:
-            scheduled = csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts)
+            scheduled, unplaced_courses = csp_backtrack(
+                unscheduled, scheduled, rooms, timeslots, student_counts
+            )
 
         # --- Phase 4: Simulated Annealing ---
         optimized = simulated_annealing(scheduled, rooms, timeslots, student_counts)
@@ -85,7 +88,7 @@ class HGCSAScheduler:
         )
         conflicts = validate_timetable(entry_objects)
 
-        return entries, conflicts
+        return entries, conflicts, unplaced_courses
 
     def _save_to_db(self, assignments, programme_ids, semester, study_years, exam_only):
         """
