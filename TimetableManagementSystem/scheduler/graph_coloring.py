@@ -17,6 +17,10 @@ def build_conflict_graph(courses):
     course_list = list(courses)
     for i, c1 in enumerate(course_list):
         for c2 in course_list[i + 1:]:
+            # Courses in the same merge_group are NEVER in conflict —
+            # they intentionally share the same room + timeslot.
+            if c1.merge_group and c1.merge_group == c2.merge_group:
+                continue
             conflict = False
             # Shared lecturer
             if c1.lecturer_id and c1.lecturer_id == c2.lecturer_id:
@@ -56,19 +60,24 @@ def validate_timetable(entries):
 
     for entry in entries:
         # Hard constraint 1: no room double-booking
+        # Exception: courses in the same merge_group intentionally share a room.
         room_key = (entry.room_id, entry.timeslot_id)
         if room_key in seen_room_timeslot:
-            conflicts.append({
-                'type': 'room_double_booking',
-                'room': entry.room.name,
-                'timeslot': str(entry.timeslot),
-                'entry1_id': seen_room_timeslot[room_key],
-                'entry2_id': entry.id,
-                'entry1_course': '',
-                'entry2_course': entry.course.code,
-            })
+            prev_id, prev_merge = seen_room_timeslot[room_key]
+            this_merge = entry.course.merge_group
+            # Only flag as conflict if NOT a shared-venue group
+            if not (this_merge and this_merge == prev_merge):
+                conflicts.append({
+                    'type': 'room_double_booking',
+                    'room': entry.room.name,
+                    'timeslot': str(entry.timeslot),
+                    'entry1_id': prev_id,
+                    'entry2_id': entry.id,
+                    'entry1_course': '',
+                    'entry2_course': entry.course.code,
+                })
         else:
-            seen_room_timeslot[room_key] = entry.id
+            seen_room_timeslot[room_key] = (entry.id, entry.course.merge_group)
 
         # Hard constraint 2: no lecturer overlap
         if entry.lecturer_id:

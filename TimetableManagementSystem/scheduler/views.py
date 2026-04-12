@@ -827,6 +827,25 @@ class ClearStudentCountsView(ClearDataView):
     label = 'studentcounts'
 
 
+class SetMergeGroupView(APIView):
+    """
+    POST /api/courses/set-merge-group/
+    Body: { "course_ids": [1,2,3], "merge_group": "MATH_Y1S1" }
+    Sets merge_group on all listed courses. Pass merge_group="" to clear.
+    """
+    permission_classes = [IsCoordinatorOrAdmin]
+
+    def post(self, request):
+        course_ids = request.data.get('course_ids', [])
+        merge_group = request.data.get('merge_group', '').strip() or None
+        if not course_ids:
+            return Response({'error': 'No course_ids provided.'}, status=400)
+        updated = Course.objects.filter(id__in=course_ids).update(merge_group=merge_group)
+        log_action(request.user, 'SET_MERGE_GROUP', 'Course',
+                   details=f"Set merge_group='{merge_group}' on {updated} courses")
+        return Response({'updated': updated, 'merge_group': merge_group})
+
+
 class ClearTimetableView(APIView):
     """
     DELETE /api/timetable/clear/

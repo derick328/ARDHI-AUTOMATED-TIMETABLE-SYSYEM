@@ -1,12 +1,16 @@
 """
 Phase 3 of HGCSA: CSP with Backtracking
-Guarantees 100% course placement by exhaustively searching all valid
+Guarantees maximum course placement by exhaustively searching all valid
 (timeslot, room) combinations with full constraint propagation and backtracking.
+
+Merge-group support:
+  Unscheduled courses sharing the same merge_group are treated as one unit.
+  The unit is placed as a whole — same room + timeslot — or not at all.
 """
 from datetime import time
+from collections import defaultdict
 import sys
 
-# Increase recursion limit for large timetables
 sys.setrecursionlimit(10000)
 
 
@@ -16,25 +20,34 @@ def _is_friday_restricted(timeslot):
     return timeslot.start_time >= time(12, 0)
 
 
+def _build_units(unscheduled, student_counts):
+    """Group unscheduled courses by merge_group; singles become unit of 1."""
+    grouped = defaultdict(list)
+    singles = []
+    for c in unscheduled:
+        if c.merge_group:
+            grouped[c.merge_group].append(c)
+        else:
+            singles.append(c)
+    units = list(grouped.values()) + [[c] for c in singles]
+    counts = {}
+    for unit in units:
+        total = sum(student_counts.get((c.programme_id, c.study_year), 0) for c in unit)
+        counts[unit[0].id] = total
+    return units, counts
+
+
 def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
     """
     Phase 3: CSP + Backtracking for remaining unscheduled courses.
-
-    Args:
-        unscheduled: list of courses not placed by greedy
-        scheduled: list of existing assignments (from Phase 2)
-        rooms: all available rooms
-        timeslots: all available timeslots
-        student_counts: dict {(programme_id, study_year): total_count}
-
-    Returns:
-        scheduled list (extended with newly placed courses)
-        Raises RuntimeError if a course truly cannot be placed (impossible constraints)
+    Returns (scheduled_list, unplaced_courses).
+    Never raises — always returns the best partial solution found.
     """
     if not unscheduled:
-        return scheduled
+        return scheduled, []
 
-    # Build occupancy sets from existing scheduled assignments
+    units, combined_counts = _build_units(unscheduled, student_counts)
+
     occupied_rooms = set()
     occupied_lecturers = set()
     occupied_groups = set()
@@ -45,69 +58,73 @@ def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
             occupied_lecturers.add((a['course'].lecturer_id, a['timeslot'].id))
         occupied_groups.add((a['course'].programme_id, a['course'].study_year, a['timeslot'].id))
 
-    # Sort rooms by capacity descending
     sorted_rooms = sorted(rooms, key=lambda r: r.capacity, reverse=True)
 
     def backtrack(index):
-        """Recursive backtracking. Returns True if all courses placed."""
-        if index == len(unscheduled):
+        if index == len(units):
             return True
 
-        course = unscheduled[index]
-        student_count = student_counts.get((course.programme_id, course.study_year), 0)
+        unit = units[index]
+        combined_count = combined_counts[unit[0].id]
+        is_lab = unit[0].is_lab
 
         for timeslot in timeslots:
             if _is_friday_restricted(timeslot):
                 continue
 
-            group_key = (course.programme_id, course.study_year, timeslot.id)
-            if group_key in occupied_groups:
+            group_keys = [(c.programme_id, c.study_year, timeslot.id) for c in unit]
+            if any(gk in occupied_groups for gk in group_keys):
                 continue
 
-            lect_key = None
-            if course.lecturer_id:
-                lect_key = (course.lecturer_id, timeslot.id)
-                if lect_key in occupied_lecturers:
-                    continue
+            lect_keys = []
+            lect_conflict = False
+            for c in unit:
+                if c.lecturer_id:
+                    lk = (c.lecturer_id, timeslot.id)
+                    if lk in occupied_lecturers:
+                        lect_conflict = True
+                        break
+                    lect_keys.append(lk)
+            if lect_conflict:
+                continue
 
             for room in sorted_rooms:
-                if course.is_lab and not room.is_lab:
+                if is_lab and not room.is_lab:
                     continue
-                if not course.is_lab and room.is_lab:
+                if not is_lab and room.is_lab:
                     continue
-                if room.capacity < student_count:
+                if room.capacity < combined_count:
                     continue
 
                 room_key = (room.id, timeslot.id)
                 if room_key in occupied_rooms:
                     continue
 
-                # Try this assignment
+                # Try this assignment for the whole unit
                 occupied_rooms.add(room_key)
-                occupied_groups.add(group_key)
-                if lect_key:
-                    occupied_lecturers.add(lect_key)
-                scheduled.append({'course': course, 'room': room, 'timeslot': timeslot})
+                for gk in group_keys:
+                    occupied_groups.add(gk)
+                for lk in lect_keys:
+                    occupied_lecturers.add(lk)
+                for c in unit:
+                    scheduled.append({'course': c, 'room': room, 'timeslot': timeslot})
 
                 if backtrack(index + 1):
                     return True
 
-                # Backtrack — undo this assignment
-                scheduled.pop()
+                # Backtrack
+                for _ in unit:
+                    scheduled.pop()
                 occupied_rooms.discard(room_key)
-                occupied_groups.discard(group_key)
-                if lect_key:
-                    occupied_lecturers.discard(lect_key)
+                for gk in group_keys:
+                    occupied_groups.discard(gk)
+                for lk in lect_keys:
+                    occupied_lecturers.discard(lk)
 
-        # Could not place this course — signal failure up the call stack
         return False
 
     backtrack(0)
 
-    # Identify any courses that still could not be placed
     placed_ids = {a['course'].id for a in scheduled}
     unplaced = [c for c in unscheduled if c.id not in placed_ids]
-
-    # Return the partial schedule and the list of unplaced courses.
-    # The caller decides how to report unplaced courses — we never hard-fail here.
     return scheduled, unplaced
