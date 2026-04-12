@@ -784,7 +784,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
             </div>
             <div class="col-md-6">
               <label class="form-label">Role *</label>
-              <select class="form-select" name="role" required>
+              <select class="form-select" name="role" id="createUserRole" required>
                 <option value="TTC">Coordinator (TTC)</option>
                 <option value="HOD">HOD</option>
                 <option value="EXAM">Exam Officer</option>
@@ -793,6 +793,25 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                 <option value="ICTD">ICTD</option>
                 <option value="LECTURER">Lecturer (staff)</option>
               </select>
+            </div>
+            <!-- Lecturer picker — visible only when role = LECTURER -->
+            <div class="col-12" id="lectPickerRow" style="display:none">
+              <label class="form-label fw-semibold text-primary">
+                <i class="bi bi-person-badge me-1"></i>Link to Lecturer *
+              </label>
+              <div class="position-relative">
+                <input type="text" id="lectPickSearch" class="form-control"
+                       placeholder="Type lecturer name to search…" autocomplete="off">
+                <button type="button" id="lectPickClear"
+                        class="btn btn-sm btn-link position-absolute end-0 top-50 translate-middle-y pe-2"
+                        style="display:none;color:#999"><i class="bi bi-x-lg"></i></button>
+                <div id="lectPickResults"
+                     class="list-group position-absolute w-100 shadow-sm"
+                     style="display:none;z-index:9999;max-height:220px;overflow-y:auto;top:100%"></div>
+              </div>
+              <input type="hidden" name="lecturer_id" id="lectPickId">
+              <div id="lectPickConfirm" class="form-text text-success mt-1" style="display:none"></div>
+              <div class="form-text text-muted">Select a lecturer to auto-fill email, name and username.</div>
             </div>
           </div>
           <div id="createUserError" class="alert alert-danger mt-3 d-none"></div>
@@ -985,6 +1004,15 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
   e.preventDefault();
   const fd = new FormData(this);
   const data = Object.fromEntries(fd.entries());
+
+  // Validate: if role=LECTURER, a lecturer must be linked
+  if (data.role === 'LECTURER' && !data.lecturer_id) {
+    const errDiv = document.getElementById('createUserError');
+    errDiv.textContent = 'Please select a lecturer from the list to link this account.';
+    errDiv.classList.remove('d-none');
+    return;
+  }
+
   const errDiv = document.getElementById('createUserError');
   errDiv.classList.add('d-none');
   fetch('{% url "register_user" %}', {
@@ -1001,6 +1029,129 @@ document.getElementById('createUserForm').addEventListener('submit', function(e)
       errDiv.classList.remove('d-none');
     }
   });
+});
+
+// ── Lecturer picker (create user modal) ───────────────────────────
+const ALL_LECTURERS_ADMIN = [
+  {% for l in all_lecturers %}{"id":{{ l.id }},"name":"{{ l.name|escapejs }}","email":"{{ l.email|escapejs }}","full_time":{{ l.is_full_time|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+const roleSelect    = document.getElementById('createUserRole');
+const lectPickerRow = document.getElementById('lectPickerRow');
+const lectPickSearch = document.getElementById('lectPickSearch');
+const lectPickResults = document.getElementById('lectPickResults');
+const lectPickClear = document.getElementById('lectPickClear');
+const lectPickId    = document.getElementById('lectPickId');
+const lectPickConfirm = document.getElementById('lectPickConfirm');
+
+// Show/hide picker based on role selection
+roleSelect.addEventListener('change', function() {
+  if (this.value === 'LECTURER') {
+    lectPickerRow.style.display = 'block';
+  } else {
+    lectPickerRow.style.display = 'none';
+    lectPickSearch.value = '';
+    lectPickId.value = '';
+    lectPickConfirm.style.display = 'none';
+    lectPickClear.style.display = 'none';
+    lectPickResults.style.display = 'none';
+  }
+});
+
+// Reset picker when modal is closed/reopened
+document.getElementById('createUserModal').addEventListener('hidden.bs.modal', function() {
+  document.getElementById('createUserForm').reset();
+  lectPickerRow.style.display = 'none';
+  lectPickSearch.value = '';
+  lectPickId.value = '';
+  lectPickConfirm.style.display = 'none';
+  lectPickClear.style.display = 'none';
+  lectPickResults.style.display = 'none';
+  document.getElementById('createUserError').classList.add('d-none');
+});
+
+function renderLectPick(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { lectPickResults.style.display = 'none'; return; }
+  const matches = ALL_LECTURERS_ADMIN.filter(l => l.name.toLowerCase().includes(q)).slice(0, 12);
+  if (matches.length === 0) {
+    lectPickResults.innerHTML = '<div class="list-group-item text-muted small py-2">No lecturers found</div>';
+  } else {
+    lectPickResults.innerHTML = matches.map(l =>
+      `<button type="button" class="list-group-item list-group-item-action py-2 lect-pick-item"
+         data-id="${l.id}" data-name="${l.name.replace(/"/g,'&quot;')}"
+         data-email="${l.email.replace(/"/g,'&quot;')}" data-fulltime="${l.full_time}">
+         <strong>${l.name}</strong>
+         <span class="text-muted ms-2 small">${l.email}</span>
+         ${!l.full_time ? '<span class="badge bg-secondary ms-1">Part-time</span>' : ''}
+       </button>`
+    ).join('');
+  }
+  lectPickResults.style.display = 'block';
+}
+
+lectPickSearch.addEventListener('input', function() {
+  lectPickClear.style.display = this.value ? '' : 'none';
+  if (!this.value) {
+    lectPickId.value = '';
+    lectPickConfirm.style.display = 'none';
+  }
+  renderLectPick(this.value);
+});
+
+lectPickSearch.addEventListener('focus', function() {
+  if (this.value.trim()) renderLectPick(this.value);
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#lectPickSearch') && !e.target.closest('#lectPickResults')) {
+    lectPickResults.style.display = 'none';
+  }
+});
+
+lectPickClear.addEventListener('click', function() {
+  lectPickSearch.value = '';
+  lectPickId.value = '';
+  lectPickClear.style.display = 'none';
+  lectPickResults.style.display = 'none';
+  lectPickConfirm.style.display = 'none';
+});
+
+lectPickResults.addEventListener('click', function(e) {
+  const btn = e.target.closest('.lect-pick-item');
+  if (!btn) return;
+
+  const lid   = btn.dataset.id;
+  const name  = btn.dataset.name;
+  const email = btn.dataset.email;
+
+  // Store lecturer id
+  lectPickId.value = lid;
+  lectPickSearch.value = name;
+  lectPickClear.style.display = '';
+  lectPickResults.style.display = 'none';
+
+  // Show confirmation
+  lectPickConfirm.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Linked to <strong>${name}</strong>`;
+  lectPickConfirm.style.display = 'block';
+
+  // Auto-fill email
+  const form = document.getElementById('createUserForm');
+  form.querySelector('[name=email]').value = email;
+
+  // Auto-fill first/last name from lecturer name
+  const nameParts = name.trim().split(/\s+/);
+  form.querySelector('[name=first_name]').value = nameParts[0] || '';
+  form.querySelector('[name=last_name]').value  = nameParts.slice(1).join(' ');
+
+  // Suggest username: firstname.lastname (lowercase, no spaces)
+  const usernameEl = form.querySelector('[name=username]');
+  if (!usernameEl.value) {
+    const first = (nameParts[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const last  = (nameParts[nameParts.length - 1] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    usernameEl.value = nameParts.length > 1 ? first + '.' + last : first;
+  }
 });
 </script>
 {% endblock body %}
