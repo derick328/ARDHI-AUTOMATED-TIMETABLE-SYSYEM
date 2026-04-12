@@ -958,6 +958,14 @@ document.querySelectorAll('.upload-form').forEach(form => {
         html += `<strong>${data.success_count} record(s) created.</strong>`;
         if (data.linked_count !== undefined) html += ` <strong>${data.linked_count} course(s) linked.</strong>`;
         if (data.sheets_processed) html += `<br>Sheets: ${data.sheets_processed.join(', ')}`;
+        if (data.groups_created && data.groups_created.length) {
+          html += `<br><strong>${data.groups_created.length} shared-course group(s) created:</strong>`;
+          html += '<table class="table table-sm table-bordered mt-1 mb-0"><thead><tr><th>Course</th><th>Group</th><th>Lecturer</th><th>Programmes</th><th>Students</th></tr></thead><tbody>';
+          data.groups_created.forEach(g => {
+            html += `<tr><td>${g.course}</td><td><code>${g.group}</code></td><td>${g.lecturer}</td><td>${g.programmes.join(', ')}</td><td>${g.students}</td></tr>`;
+          });
+          html += '</tbody></table>';
+        }
         if (data.errors && data.errors.length) {
           html += `<br><strong>${data.errors.length} error(s):</strong><ul>`;
           data.errors.slice(0, 10).forEach(e => html += `<li>${e}</li>`);
