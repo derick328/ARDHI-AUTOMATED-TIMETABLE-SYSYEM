@@ -152,6 +152,7 @@ def admin_dashboard(request):
         'all_users': User.objects.select_related('stakeholder').all(),
         'audit_logs': AuditLog.objects.select_related('user').all()[:50],
         # Uploaded data viewer
+        'all_schools_list': School.objects.all().order_by('name'),
         'all_rooms': Room.objects.all().order_by('name'),
         'all_lecturers': Lecturer.objects.all().order_by('name'),
         'all_courses': Course.objects.select_related('programme', 'lecturer').order_by(

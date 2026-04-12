@@ -56,6 +56,7 @@ urlpatterns = [
     path('api/admin/clear/courses/', views.ClearCoursesView.as_view(), name='clear_courses'),
     path('api/admin/clear/programmes/', views.ClearProgrammesView.as_view(), name='clear_programmes'),
     path('api/admin/clear/student-counts/', views.ClearStudentCountsView.as_view(), name='clear_student_counts'),
+    path('api/admin/clear/schools/', views.ClearSchoolsView.as_view(), name='clear_schools'),
 
     # ── Admin User Management ─────────────────────────────────────────────────────
     path('api/admin/users/', views.ListUsersView.as_view(), name='list_users'),
