@@ -838,6 +838,11 @@ class ClearStudentCountsView(ClearDataView):
     label = 'studentcounts'
 
 
+class ClearSchoolsView(ClearDataView):
+    model = School
+    label = 'schools'
+
+
 class SetMergeGroupView(APIView):
     """
     POST /api/courses/set-merge-group/
