@@ -321,17 +321,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-door-open me-2"></i> Rooms
               <span class="badge bg-secondary ms-2">{{ all_rooms|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/rooms/" data-label="all rooms">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/rooms/" data-label="all rooms">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseRooms" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseRooms" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search rooms…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>Room Name</th><th>Capacity</th><th>Lab</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for r in all_rooms %}
                     <tr id="room-row-{{ r.id }}">
                       <td>{{ forloop.counter }}</td><td>{{ r.name }}</td><td>{{ r.capacity }}</td>
@@ -339,11 +343,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/rooms/{{ r.id }}/" data-row="room-row-{{ r.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="5" class="text-center text-muted py-2">No rooms uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -355,17 +360,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-person-badge me-2"></i> Lecturers
               <span class="badge bg-secondary ms-2">{{ all_lecturers|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/lecturers/" data-label="all lecturers">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/lecturers/" data-label="all lecturers">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseLecturers" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseLecturers" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search lecturers…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>Name</th><th>Email</th><th>Full Time</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for l in all_lecturers %}
                     <tr id="lecturer-row-{{ l.id }}">
                       <td>{{ forloop.counter }}</td><td>{{ l.name }}</td>
@@ -374,11 +383,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/lecturers/{{ l.id }}/" data-row="lecturer-row-{{ l.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="5" class="text-center text-muted py-2">No lecturers uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -390,17 +400,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-mortarboard me-2"></i> Programmes
               <span class="badge bg-secondary ms-2">{{ all_programmes|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/programmes/" data-label="all programmes">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/programmes/" data-label="all programmes">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseProgrammes" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseProgrammes" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search programmes…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Name</th><th>School</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for p in all_programmes %}
                     <tr id="programme-row-{{ p.id }}">
                       <td>{{ forloop.counter }}</td><td><strong>{{ p.code }}</strong></td>
@@ -408,11 +422,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/programmes/{{ p.id }}/" data-row="programme-row-{{ p.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="5" class="text-center text-muted py-2">No programmes uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -424,17 +439,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-book me-2"></i> Courses
               <span class="badge bg-secondary ms-2">{{ all_courses|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/courses/" data-label="all courses">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/courses/" data-label="all courses">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseCourses" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseCourses" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:350px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search courses…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th><th>Lecturer</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for c in all_courses %}
                     <tr id="course-row-{{ c.id }}">
                       <td>{{ forloop.counter }}</td><td><strong>{{ c.code }}</strong></td>
@@ -444,11 +463,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/courses/{{ c.id }}/" data-row="course-row-{{ c.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="8" class="text-center text-muted py-2">No courses uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -460,17 +480,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-people me-2"></i> Student Counts
               <span class="badge bg-secondary ms-2">{{ all_student_counts|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/student-counts/" data-label="all student counts">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/student-counts/" data-label="all student counts">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseStudents" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseStudents" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search student counts…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>Programme</th><th>Year</th><th>Male</th><th>Female</th><th>Total</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for sc in all_student_counts %}
                     <tr id="sc-row-{{ sc.id }}">
                       <td>{{ forloop.counter }}</td><td>{{ sc.programme.code }}</td>
@@ -479,11 +503,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/student-counts/{{ sc.id }}/" data-row="sc-row-{{ sc.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="7" class="text-center text-muted py-2">No student population data uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -495,17 +520,21 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
               <i class="bi bi-bank2 me-2"></i> Schools
               <span class="badge bg-secondary ms-2">{{ all_schools_list|length }}</span>
             </button>
-            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all"
-              data-url="/api/admin/clear/schools/" data-label="all schools">
+            <button class="btn btn-sm btn-outline-danger me-2 btn-clear-all" data-url="/api/admin/clear/schools/" data-label="all schools">
               <i class="bi bi-trash"></i> Delete All
             </button>
           </h2>
-          <div id="collapseSchools" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion">
+          <div id="collapseSchools" class="accordion-collapse collapse" data-bs-parent="#uploadedDataAccordion" data-acctable>
             <div class="accordion-body p-0">
-              <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+              <div class="d-flex align-items-center gap-2 px-3 pt-2 pb-1 border-bottom">
+                <i class="bi bi-search text-muted small"></i>
+                <input type="text" class="form-control form-control-sm acc-search" placeholder="Search schools…">
+                <span class="text-muted small acc-page-info text-nowrap ms-auto"></span>
+              </div>
+              <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
                   <thead class="table-dark sticky-top"><tr><th>#</th><th>School Name</th><th></th></tr></thead>
-                  <tbody>
+                  <tbody class="acc-tab-body">
                     {% for s in all_schools_list %}
                     <tr id="school-row-{{ s.id }}">
                       <td>{{ forloop.counter }}</td>
@@ -513,11 +542,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                       <td><button class="btn btn-xs btn-outline-danger btn-delete-item" data-url="/api/schools/{{ s.id }}/" data-row="school-row-{{ s.id }}"><i class="bi bi-trash"></i></button></td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="3" class="text-center text-muted py-2">No schools uploaded yet</td></tr>
+                    <tr class="empty-row"><td colspan="3" class="text-center text-muted py-2">No schools uploaded yet</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+              <div class="d-flex align-items-center justify-content-center gap-1 py-2 border-top acc-pag-wrap"></div>
             </div>
           </div>
         </div>
@@ -1129,7 +1159,89 @@ function initSchoolTab(pane) {
   renderPage(1);
 }
 
-// Init a pane once, guard with data-paginit flag
+// ── Uploaded Items accordion search + pagination ──────────────────
+const ACC_PAGE_SIZE = 15;
+
+function initAccTable(panel) {
+  const tbody    = panel.querySelector('.acc-tab-body');
+  const searchEl = panel.querySelector('.acc-search');
+  const pagWrap  = panel.querySelector('.acc-pag-wrap');
+  const pageInfo = panel.querySelector('.acc-page-info');
+  if (!tbody || !searchEl) return;
+
+  const allRows = Array.from(tbody.querySelectorAll('tr:not(.empty-row)'));
+  if (allRows.length === 0) return;
+
+  let filteredRows = [...allRows];
+  let currentPage  = 1;
+
+  function renderAccPage(page) {
+    currentPage = page;
+    const total = filteredRows.length;
+    const pages = Math.max(1, Math.ceil(total / ACC_PAGE_SIZE));
+    const start = (page - 1) * ACC_PAGE_SIZE;
+    const end   = Math.min(start + ACC_PAGE_SIZE, total);
+
+    allRows.forEach(r => { r.style.display = 'none'; });
+    filteredRows.slice(start, end).forEach(r => { r.style.display = ''; });
+
+    pageInfo.textContent = total === 0 ? 'No results' : `${start + 1}–${end} of ${total}`;
+
+    pagWrap.innerHTML = '';
+    if (pages <= 1 && total <= ACC_PAGE_SIZE) return;  // no controls needed
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'btn btn-sm btn-outline-secondary';
+    prevBtn.textContent = 'Prev';
+    prevBtn.disabled = page <= 1;
+    prevBtn.addEventListener('click', () => renderAccPage(currentPage - 1));
+    pagWrap.appendChild(prevBtn);
+
+    const numsWrap = document.createElement('span');
+    numsWrap.className = 'd-flex gap-1';
+    const maxBtns = 7;
+    let startP = Math.max(1, page - Math.floor(maxBtns / 2));
+    let endP   = Math.min(pages, startP + maxBtns - 1);
+    if (endP - startP < maxBtns - 1) startP = Math.max(1, endP - maxBtns + 1);
+    for (let p = startP; p <= endP; p++) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm ' + (p === page ? 'btn-primary' : 'btn-outline-secondary');
+      btn.textContent = p;
+      btn.addEventListener('click', () => renderAccPage(p));
+      numsWrap.appendChild(btn);
+    }
+    pagWrap.appendChild(numsWrap);
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn-sm btn-outline-secondary';
+    nextBtn.textContent = 'Next';
+    nextBtn.disabled = page >= pages;
+    nextBtn.addEventListener('click', () => renderAccPage(currentPage + 1));
+    pagWrap.appendChild(nextBtn);
+  }
+
+  searchEl.addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    filteredRows = q
+      ? allRows.filter(r => r.textContent.toLowerCase().includes(q))
+      : [...allRows];
+    renderAccPage(1);
+  });
+
+  renderAccPage(1);
+}
+
+// Init each accordion panel the first time it is expanded
+document.querySelectorAll('[data-acctable]').forEach(panel => {
+  panel.addEventListener('shown.bs.collapse', function handler() {
+    if (!panel.dataset.accinit) {
+      panel.dataset.accinit = '1';
+      initAccTable(panel);
+    }
+  });
+});
+
+// ── Init a pane once, guard with data-paginit flag
 function maybeInitPane(pane) {
   if (!pane || !pane.hasAttribute('data-pagtable') || pane.dataset.paginit) return;
   pane.dataset.paginit = '1';
