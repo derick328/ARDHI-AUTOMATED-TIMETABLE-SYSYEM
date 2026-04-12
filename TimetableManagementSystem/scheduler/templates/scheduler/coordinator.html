@@ -1227,6 +1227,124 @@ document.querySelectorAll('.upload-form').forEach(form => {
       });
   });
 });
+
+// ── Merge Group Manager ───────────────────────────────────────────
+let mergeCoursesData = [];   // [{id, code, title, programme_code, study_year, merge_group}]
+
+document.getElementById('btnLoadMergeCourses').addEventListener('click', function() {
+  const prog = document.getElementById('mergeProgrammeFilter').value;
+  const year = document.getElementById('mergeYearFilter').value;
+  let url = '/api/courses/?format=json';
+  if (prog) url += `&programme=${prog}`;
+  if (year) url += `&year=${year}`;
+
+  fetch(url).then(r => r.json()).then(data => {
+    mergeCoursesData = (data.results || data);
+    renderMergeCourseList(mergeCoursesData);
+  });
+});
+
+function renderMergeCourseList(courses) {
+  const container = document.getElementById('mergeCourseList');
+  if (!courses.length) {
+    container.innerHTML = '<p class="text-muted text-center py-3 small">No courses found.</p>';
+    return;
+  }
+  container.innerHTML = courses.map(c => {
+    const hasMerge = c.merge_group;
+    const badge = hasMerge
+      ? `<span class="badge bg-warning text-dark ms-1">${c.merge_group}</span>`
+      : '';
+    return `
+    <div class="form-check border-bottom py-1 px-2">
+      <input class="form-check-input merge-course-chk" type="checkbox"
+        id="mc-${c.id}" value="${c.id}" data-merge="${c.merge_group || ''}">
+      <label class="form-check-label small" for="mc-${c.id}">
+        <strong>${c.code}</strong>
+        <span class="text-muted ms-1">${c.title.substring(0,50)}</span>
+        <span class="badge bg-secondary ms-1">${c.programme_name || ''}</span>
+        <span class="badge bg-light text-dark border ms-1">Yr${c.study_year}</span>
+        ${badge}
+      </label>
+    </div>`;
+  }).join('');
+}
+
+function getSelectedMergeCourseIds() {
+  return Array.from(document.querySelectorAll('.merge-course-chk:checked')).map(c => parseInt(c.value));
+}
+
+document.getElementById('btnApplyMerge').addEventListener('click', function() {
+  const ids = getSelectedMergeCourseIds();
+  const group = document.getElementById('mergeGroupName').value.trim().replace(/\s+/g, '_');
+  if (ids.length < 2) { alert('Select at least 2 courses to merge.'); return; }
+  if (!group) { alert('Enter a merge group label.'); return; }
+
+  const status = document.getElementById('mergeStatus');
+  status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Applying...';
+  fetch('/api/courses/set-merge-group/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ course_ids: ids, merge_group: group })
+  }).then(r => r.json()).then(data => {
+    status.innerHTML = `<div class="alert alert-success py-1">
+      <i class="bi bi-check-circle-fill"></i>
+      Merged ${data.updated} courses into group <strong>"${data.merge_group}"</strong>.
+      They will share a room during generation.
+    </div>`;
+    document.getElementById('btnLoadMergeCourses').click();  // refresh list
+    loadMergeGroupsSummary();
+  });
+});
+
+document.getElementById('btnClearMerge').addEventListener('click', function() {
+  const ids = getSelectedMergeCourseIds();
+  if (!ids.length) { alert('Select at least one course to clear.'); return; }
+  if (!confirm('Remove merge group from selected courses?')) return;
+
+  const status = document.getElementById('mergeStatus');
+  fetch('/api/courses/set-merge-group/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify({ course_ids: ids, merge_group: '' })
+  }).then(r => r.json()).then(data => {
+    status.innerHTML = `<div class="alert alert-info py-1">Cleared merge group from ${data.updated} course(s).</div>`;
+    document.getElementById('btnLoadMergeCourses').click();
+    loadMergeGroupsSummary();
+  });
+});
+
+function loadMergeGroupsSummary() {
+  fetch('/api/courses/?format=json&page_size=1000').then(r => r.json()).then(data => {
+    const courses = (data.results || data);
+    const groups = {};
+    courses.forEach(c => {
+      if (c.merge_group) {
+        if (!groups[c.merge_group]) groups[c.merge_group] = [];
+        groups[c.merge_group].push(c);
+      }
+    });
+    const keys = Object.keys(groups);
+    const el = document.getElementById('mergeGroupsSummary');
+    if (!keys.length) {
+      el.innerHTML = '<em>No merge groups defined yet.</em>';
+      return;
+    }
+    el.innerHTML = keys.map(g => {
+      const cs = groups[g];
+      const codes = cs.map(c =>
+        `<span class="badge bg-primary me-1">${c.code}</span><span class="text-muted small">(${c.programme_name || ''})</span>`
+      ).join(' ');
+      return `<div class="mb-2 p-2 border rounded bg-white">
+        <span class="badge bg-warning text-dark me-2">${g}</span>
+        ${codes}
+        <span class="badge bg-light text-dark border ms-2">${cs.length} courses</span>
+      </div>`;
+    }).join('');
+  });
+}
+
+document.getElementById('btnRefreshMergeGroups').addEventListener('click', loadMergeGroupsSummary);
 </script>
 
 {% endblock %}
