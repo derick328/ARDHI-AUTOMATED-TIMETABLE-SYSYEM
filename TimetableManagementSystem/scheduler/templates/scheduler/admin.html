@@ -960,12 +960,24 @@ document.querySelectorAll('.upload-form').forEach(form => {
         if (data.linked_count !== undefined) html += ` <strong>${data.linked_count} course(s) linked.</strong>`;
         if (data.sheets_processed) html += `<br>Sheets: ${data.sheets_processed.join(', ')}`;
         if (data.groups_created && data.groups_created.length) {
-          html += `<br><strong>${data.groups_created.length} shared-course group(s) created:</strong>`;
-          html += '<table class="table table-sm table-bordered mt-1 mb-0"><thead><tr><th>Course</th><th>Group</th><th>Lecturer</th><th>Programmes</th><th>Students</th></tr></thead><tbody>';
-          data.groups_created.forEach(g => {
-            html += `<tr><td>${g.course}</td><td><code>${g.group}</code></td><td>${g.lecturer}</td><td>${g.programmes.join(', ')}</td><td>${g.students}</td></tr>`;
-          });
-          html += '</tbody></table>';
+          const merges = data.groups_created.filter(g => g.type === 'merge');
+          const sections = data.groups_created.filter(g => g.type === 'section');
+          if (merges.length) {
+            html += `<br><strong>${merges.length} shared-venue group(s) created (multi-programme):</strong>`;
+            html += '<table class="table table-sm table-bordered mt-1 mb-0"><thead><tr><th>Course</th><th>Group</th><th>Lecturer</th><th>Programmes</th><th>Students</th></tr></thead><tbody>';
+            merges.forEach(g => {
+              html += `<tr><td>${g.course}</td><td><code>${g.group}</code></td><td>${g.lecturer}</td><td>${g.programmes.join(', ')}</td><td>${g.students}</td></tr>`;
+            });
+            html += '</tbody></table>';
+          }
+          if (sections.length) {
+            html += `<br><strong>${sections.length} section split(s) created (large single-programme class):</strong>`;
+            html += '<table class="table table-sm table-bordered mt-1 mb-0"><thead><tr><th>Course</th><th>Sections</th><th>Lecturer(s)</th><th>Programme</th><th>Students</th></tr></thead><tbody>';
+            sections.forEach(g => {
+              html += `<tr><td>${g.course}</td><td><code>${g.group}</code></td><td>${g.lecturer}</td><td>${g.programmes.join(', ')}</td><td>${g.students}</td></tr>`;
+            });
+            html += '</tbody></table>';
+          }
         }
         if (hasErrors) {
           html += `<br><strong>${data.errors.length} error(s):</strong><ul>`;
