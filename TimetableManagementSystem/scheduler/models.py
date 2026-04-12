@@ -94,13 +94,17 @@ class Course(models.Model):
     merge_group = models.CharField(max_length=100, blank=True, null=True, default=None,
                                    help_text='Leave blank for no sharing. '
                                              'Courses with the same value share a room.')
+    # Section: blank = only/base record; 'B','C',… = auto-created split sections
+    # (large single-programme classes taught by multiple lecturers)
+    section = models.CharField(max_length=10, blank=True, default='')
 
     class Meta:
-        ordering = ['programme', 'study_year', 'semester', 'code']
-        unique_together = ('code', 'programme')
+        ordering = ['programme', 'study_year', 'semester', 'code', 'section']
+        unique_together = ('code', 'programme', 'section')
 
     def __str__(self):
-        return f"{self.code} — {self.title}"
+        sec = f' ({self.section})' if self.section else ''
+        return f"{self.code}{sec} — {self.title}"
 
 
 class StudentCount(models.Model):
