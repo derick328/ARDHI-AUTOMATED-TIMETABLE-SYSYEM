@@ -9,6 +9,12 @@ Soft constraints optimized:
   4. Prefer morning slots (before 12:00)
   5. Balance room usage
   6. Avoid last timeslot of the day
+
+Merge-group awareness:
+  Courses sharing the same merge_group are always swapped as a unit so their
+  shared (room, timeslot) invariant is never broken.  The hard-constraint
+  checker allows multiple courses at the same room+timeslot when they all
+  belong to the same merge group.
 """
 import math
 import random
@@ -25,20 +31,54 @@ def _is_friday_restricted(timeslot):
     return timeslot.start_time >= time(12, 0)
 
 
+def _build_swap_units(assignments):
+    """
+    Group assignment indices into swap units.
+    All members of the same merge_group must move together so the
+    merge-group invariant (same room+timeslot) is preserved after every swap.
+    Non-merge courses form units of one.
+
+    Returns: list of lists of assignment indices.
+    """
+    group_map = {}   # merge_group label → unit index in `units`
+    units = []
+
+    for idx, a in enumerate(assignments):
+        mg = a['course'].merge_group
+        if mg and mg in group_map:
+            units[group_map[mg]].append(idx)
+        else:
+            unit_idx = len(units)
+            units.append([idx])
+            if mg:
+                group_map[mg] = unit_idx
+
+    return units
+
+
 def _hard_constraints_ok(assignments, student_counts):
     """
     Quick hard-constraint check for a candidate swap.
     Returns True if all hard constraints still hold.
+
+    Room conflicts: two courses at the same (room, timeslot) are only
+    allowed when they share the same non-null merge_group.
     """
-    seen_rooms = set()
+    room_slot_group = {}   # (room_id, timeslot_id) → merge_group
     seen_lecturers = set()
     seen_groups = set()
 
     for a in assignments:
+        mg = a['course'].merge_group
         room_key = (a['room'].id, a['timeslot'].id)
-        if room_key in seen_rooms:
-            return False
-        seen_rooms.add(room_key)
+
+        if room_key in room_slot_group:
+            existing_mg = room_slot_group[room_key]
+            # Only acceptable if both belong to the exact same merge group
+            if mg is None or existing_mg != mg:
+                return False
+        else:
+            room_slot_group[room_key] = mg
 
         if a['course'].lecturer_id:
             lect_key = (a['course'].lecturer_id, a['timeslot'].id)
@@ -51,15 +91,12 @@ def _hard_constraints_ok(assignments, student_counts):
             return False
         seen_groups.add(group_key)
 
-        # Friday restriction
         if _is_friday_restricted(a['timeslot']):
             return False
 
-        # Lab constraint
         if a['course'].is_lab and not a['room'].is_lab:
             return False
 
-        # Capacity constraint
         student_count = student_counts.get(
             (a['course'].programme_id, a['course'].study_year), 0
         )
@@ -112,13 +149,12 @@ def compute_score(assignments):
             day_groups[day_ord].append(st)
         for day_slots in day_groups.values():
             day_slots.sort()
-            # Penalize each gap between consecutive slots
             for i in range(1, len(day_slots)):
                 gap_mins = (
                     day_slots[i].hour * 60 + day_slots[i].minute
                     - day_slots[i - 1].hour * 60 - day_slots[i - 1].minute
                 )
-                if gap_mins > 120:  # gap > 2 hours
+                if gap_mins > 120:
                     score -= 5
 
     return score
@@ -128,6 +164,9 @@ def simulated_annealing(scheduled, rooms, timeslots, student_counts,
                         temperature=1000.0, cooling_rate=0.95, min_temperature=1.0):
     """
     Phase 4: Simulated annealing optimization.
+
+    Swaps are performed on merge-group units, not individual assignments,
+    so the merge-group (same room+timeslot) invariant is always preserved.
 
     Args:
         scheduled: list of valid assignment dicts from Phase 3
@@ -152,17 +191,31 @@ def simulated_annealing(scheduled, rooms, timeslots, student_counts,
     temp = temperature
 
     while temp > min_temperature:
-        # Pick two random assignments to swap timeslots (and possibly rooms)
-        i, j = random.sample(range(len(current)), 2)
+        # Build units each iteration (cheap; ensures stale merge info isn't used)
+        units = _build_swap_units(current)
+        if len(units) < 2:
+            break
+
+        # Pick two distinct units to swap timeslots
+        ui, uj = random.sample(range(len(units)), 2)
+        unit_i_indices = units[ui]
+        unit_j_indices = units[uj]
+
+        ts_i = current[unit_i_indices[0]]['timeslot']
+        ts_j = current[unit_j_indices[0]]['timeslot']
+
+        # No-op swap — skip immediately
+        if ts_i is ts_j:
+            temp *= cooling_rate
+            continue
+
         candidate = list(current)
+        for idx in unit_i_indices:
+            candidate[idx] = {**candidate[idx], 'timeslot': ts_j}
+        for idx in unit_j_indices:
+            candidate[idx] = {**candidate[idx], 'timeslot': ts_i}
 
-        # Swap timeslots between the two assignments
-        a_i = {**candidate[i], 'timeslot': candidate[j]['timeslot']}
-        a_j = {**candidate[j], 'timeslot': candidate[i]['timeslot']}
-        candidate[i] = a_i
-        candidate[j] = a_j
-
-        # Reject immediately if hard constraints are violated
+        # Reject if hard constraints are violated
         if not _hard_constraints_ok(candidate, student_counts):
             temp *= cooling_rate
             continue

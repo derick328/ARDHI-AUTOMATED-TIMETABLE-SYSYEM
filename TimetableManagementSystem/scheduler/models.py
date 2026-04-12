@@ -141,10 +141,9 @@ class TimetableEntry(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=['room', 'timeslot'],
-                name='unique_room_timeslot'
-            ),
+            # NOTE: unique_room_timeslot is intentionally absent — merge-group
+            # courses share the same room+timeslot by design.  Room conflicts are
+            # prevented by the scheduler's in-memory occupied_rooms set instead.
             models.UniqueConstraint(
                 fields=['programme', 'timeslot', 'course'],
                 name='unique_programme_timeslot_course'
