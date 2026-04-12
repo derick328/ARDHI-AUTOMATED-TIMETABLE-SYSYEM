@@ -48,6 +48,9 @@ urlpatterns = [
     # ── Timeslot Seeder ───────────────────────────────────────────────────────────
     path('api/admin/seed-timeslots/', views.SeedTimeslotsView.as_view(), name='seed_timeslots'),
 
+    # ── Timetable Clear ───────────────────────────────────────────────────────────
+    path('api/timetable/clear/', views.ClearTimetableView.as_view(), name='clear_timetable'),
+
     # ── Bulk Clear (Uploaded Data) ────────────────────────────────────────────────
     path('api/admin/clear/rooms/', views.ClearRoomsView.as_view(), name='clear_rooms'),
     path('api/admin/clear/lecturers/', views.ClearLecturersView.as_view(), name='clear_lecturers'),

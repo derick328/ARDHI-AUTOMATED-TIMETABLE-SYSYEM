@@ -817,6 +817,31 @@ class ClearStudentCountsView(ClearDataView):
     label = 'studentcounts'
 
 
+class ClearTimetableView(APIView):
+    """
+    DELETE /api/timetable/clear/
+    Deletes all TimetableEntry records (full reset).
+    Optionally filter by programme_ids or school_id via query params.
+    Accessible by admin or coordinator (TTC/HOD).
+    """
+    permission_classes = [IsCoordinatorOrAdmin]
+
+    def delete(self, request):
+        programme_ids = request.query_params.getlist('programme')
+        school_id = request.query_params.get('school')
+
+        qs = TimetableEntry.objects.all()
+        if programme_ids:
+            qs = qs.filter(programme__id__in=programme_ids)
+        elif school_id:
+            qs = qs.filter(programme__school__id=school_id)
+
+        count, _ = qs.delete()
+        log_action(request.user, 'CLEAR_TIMETABLE', 'TimetableEntry',
+                   details=f"Deleted {count} entries")
+        return Response({'deleted': count, 'message': f'{count} timetable entries deleted.'})
+
+
 # ── DRF Token Auth ────────────────────────────────────────────────────────────────
 
 class ObtainTokenView(APIView):

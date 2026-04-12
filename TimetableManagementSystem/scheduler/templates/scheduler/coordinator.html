@@ -185,6 +185,10 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                 <button class="btn btn-outline-warning" id="btnGenerateExam">
                   <i class="bi bi-clipboard-check"></i> Generate Exam Timetable
                 </button>
+                <hr class="my-1">
+                <button class="btn btn-outline-danger" id="btnClearTimetable">
+                  <i class="bi bi-trash3"></i> Clear Timetable &amp; Start Afresh
+                </button>
               </div>
               <div id="genStatus" class="mt-3 small"></div>
             </div>
@@ -899,6 +903,52 @@ function generate(examOnly) {
 }
 document.getElementById('btnGenerate').onclick = () => generate(false);
 document.getElementById('btnGenerateExam').onclick = () => generate(true);
+
+// ── Clear timetable ───────────────────────────────────────────────
+document.getElementById('btnClearTimetable').addEventListener('click', function() {
+  const checkedIds = getCheckedSchoolIds();
+  const progId = genProgEl.value;
+
+  // Build a human-readable scope description
+  let scopeDesc = 'ALL timetable entries for the entire university';
+  if (progId) {
+    const progLabel = genProgEl.options[genProgEl.selectedIndex].text;
+    scopeDesc = `all entries for programme: ${progLabel}`;
+  } else if (checkedIds.length > 0) {
+    const names = schoolChks.filter(c => c.checked).map(c => c.dataset.name).join(', ');
+    scopeDesc = `all entries for school(s): ${names}`;
+  }
+
+  if (!confirm(`This will permanently delete ${scopeDesc}.\n\nThis cannot be undone. Proceed?`)) return;
+
+  const status = document.getElementById('genStatus');
+  status.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Clearing timetable...';
+
+  // Build query string for filtering
+  let url = '/api/timetable/clear/';
+  const params = new URLSearchParams();
+  if (progId) {
+    params.append('programme', progId);
+  } else if (checkedIds.length > 0) {
+    // Collect all programme ids from checked schools
+    const idSet = new Set(checkedIds);
+    allProgOptions.filter(p => idSet.has(p.school)).forEach(p => params.append('programme', p.value));
+  }
+  if ([...params].length) url += '?' + params.toString();
+
+  fetch(url, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': getCsrfToken() }
+  }).then(r => r.json()).then(data => {
+    status.innerHTML = `<div class="alert alert-success py-2">
+      <i class="bi bi-check-circle-fill"></i> ${data.message}
+      You can now generate a fresh timetable.
+    </div>`;
+    if (calendar) { calendar.removeAllEvents(); }
+  }).catch(() => {
+    status.innerHTML = '<div class="alert alert-danger py-2">Failed to clear timetable.</div>';
+  });
+});
 
 // ── Conflict Check ────────────────────────────────────────────────
 document.getElementById('btnCheckConflicts').addEventListener('click', function() {
