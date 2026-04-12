@@ -933,6 +933,42 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         </div>
       </div>
 
+      <!-- Paginated course list -->
+      <div id="courListPanel">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="bi bi-book me-2"></i>All Courses
+              <span class="badge bg-secondary ms-1" id="courTotalBadge">0</span>
+            </span>
+            <span class="text-muted small" id="courPageInfo"></span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm mb-0">
+                <thead class="table-dark">
+                  <tr>
+                    <th>#</th><th>Code</th><th>Title</th><th>Programme</th>
+                    <th>Yr</th><th>Sem</th>
+                    <th title="Number of degree programmes sharing this course">Progs</th>
+                    <th>Lecturer</th>
+                  </tr>
+                </thead>
+                <tbody id="courListBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-between align-items-center py-2">
+            <button class="btn btn-sm btn-outline-secondary" id="courPrevBtn" disabled>
+              <i class="bi bi-chevron-left"></i> Prev
+            </button>
+            <div id="courPagNums" class="d-flex gap-1 flex-wrap justify-content-center"></div>
+            <button class="btn btn-sm btn-outline-secondary" id="courNextBtn" disabled>
+              Next <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      </div><!-- /courListPanel -->
+
       <!-- Selected course detail panel (shown after search-select) -->
       <div id="courMgmtContent" style="display:none">
 
@@ -1854,44 +1890,139 @@ async function loadLecturerDetail(lid, name, email, fulltime) {
 }
 
 // ── Course Management ─────────────────────────────────────────────
-let courActiveSem = 0;   // 0 = all, 1 = sem1, 2 = sem2
+let courActiveSem    = 0;   // 0 = all, 1 = sem1, 2 = sem2
+const COUR_PAGE_SIZE = 10;
+let courCurrentPage  = 1;
+let courFilteredList = [];
 
-// Semester tab switching
-document.querySelectorAll('#courSemTabs .nav-link').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('#courSemTabs .nav-link').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    courActiveSem = parseInt(this.dataset.sem, 10);
-    // Re-render search results if query is active
-    const q = document.getElementById('courSearch').value;
-    if (q.trim()) renderCourSearch(q);
-    // Re-render unassigned list
-    renderUnassigned();
-    // Hide detail panel when semester changes
-    document.getElementById('courMgmtContent').style.display = 'none';
-    document.getElementById('courSearch').value = '';
-    document.getElementById('courSearchClear').style.display = 'none';
-    document.getElementById('courSearchResults').style.display = 'none';
-  });
+// ── Build merge-group size map (for "Progs" count) ────────────────
+const mgroupSizes = {};
+ALL_COURSES_DATA.forEach(c => {
+  if (c.merge_group) mgroupSizes[c.merge_group] = (mgroupSizes[c.merge_group] || 0) + 1;
 });
+function progCount(c) {
+  return (c.merge_group && mgroupSizes[c.merge_group]) ? mgroupSizes[c.merge_group] : 1;
+}
 
-// Back button
-document.getElementById('courDetailBack').addEventListener('click', function() {
-  document.getElementById('courMgmtContent').style.display = 'none';
+// ── Base sorted list: most programmes first, then by code ─────────
+const COUR_BASE_SORTED = [...ALL_COURSES_DATA].sort((a, b) => {
+  const diff = progCount(b) - progCount(a);
+  return diff !== 0 ? diff : a.code.localeCompare(b.code);
 });
-
-const courSearchEl  = document.getElementById('courSearch');
-const courResultsEl = document.getElementById('courSearchResults');
-const courClearBtn  = document.getElementById('courSearchClear');
 
 function semFiltered(courses) {
   return courActiveSem === 0 ? courses : courses.filter(c => c.semester === courActiveSem);
 }
 
+function showCourList() {
+  document.getElementById('courListPanel').style.display    = 'block';
+  document.getElementById('courMgmtContent').style.display  = 'none';
+}
+function showCourDetail() {
+  document.getElementById('courListPanel').style.display    = 'none';
+  document.getElementById('courMgmtContent').style.display  = 'block';
+}
+
+function rebuildCourList(query) {
+  const q    = (query || '').trim().toLowerCase();
+  const pool = semFiltered(COUR_BASE_SORTED);
+  courFilteredList = q
+    ? pool.filter(c => c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
+    : pool;
+  renderCourPage(1);
+}
+
+function renderCourPage(page) {
+  courCurrentPage = page;
+  const total = courFilteredList.length;
+  const pages = Math.max(1, Math.ceil(total / COUR_PAGE_SIZE));
+  const start = (page - 1) * COUR_PAGE_SIZE;
+  const slice = courFilteredList.slice(start, start + COUR_PAGE_SIZE);
+
+  document.getElementById('courTotalBadge').textContent = total;
+  document.getElementById('courPageInfo').textContent   =
+    total === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + COUR_PAGE_SIZE, total)} of ${total}`;
+
+  const tbody = document.getElementById('courListBody');
+  if (slice.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No courses found.</td></tr>';
+  } else {
+    tbody.innerHTML = slice.map((c, i) => {
+      const pc = progCount(c);
+      const progBadge = pc > 1
+        ? `<span class="badge bg-success">${pc}</span>`
+        : `<span class="text-muted small">1</span>`;
+      const lectCell = c.lecturer_name
+        ? `<span class="small">${c.lecturer_name}</span>`
+        : `<span class="badge bg-warning text-dark small">Unassigned</span>`;
+      return `<tr class="cour-list-row" role="button" style="cursor:pointer" data-id="${c.id}">
+        <td class="text-muted">${start + i + 1}</td>
+        <td><strong>${c.code}</strong></td>
+        <td class="small">${c.title}</td>
+        <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+        <td>${c.study_year}</td>
+        <td>${c.semester}</td>
+        <td class="text-center">${progBadge}</td>
+        <td>${lectCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Pagination buttons
+  const pagNums = document.getElementById('courPagNums');
+  pagNums.innerHTML = '';
+  const maxBtns = 7;
+  let startP = Math.max(1, page - Math.floor(maxBtns / 2));
+  let endP   = Math.min(pages, startP + maxBtns - 1);
+  if (endP - startP < maxBtns - 1) startP = Math.max(1, endP - maxBtns + 1);
+  for (let p = startP; p <= endP; p++) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm ' + (p === page ? 'btn-primary' : 'btn-outline-secondary');
+    btn.textContent = p;
+    btn.addEventListener('click', () => renderCourPage(p));
+    pagNums.appendChild(btn);
+  }
+  document.getElementById('courPrevBtn').disabled = page <= 1;
+  document.getElementById('courNextBtn').disabled = page >= pages;
+}
+
+document.getElementById('courPrevBtn').addEventListener('click', () => renderCourPage(courCurrentPage - 1));
+document.getElementById('courNextBtn').addEventListener('click', () => renderCourPage(courCurrentPage + 1));
+
+document.getElementById('courListBody').addEventListener('click', async function(e) {
+  const row = e.target.closest('.cour-list-row');
+  if (!row) return;
+  const c = ALL_COURSES_DATA.find(x => x.id == row.dataset.id);
+  if (c) await loadCourseDetail(c);
+});
+
+// ── Semester tab switching ────────────────────────────────────────
+document.querySelectorAll('#courSemTabs .nav-link').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#courSemTabs .nav-link').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    courActiveSem = parseInt(this.dataset.sem, 10);
+    document.getElementById('courSearch').value = '';
+    document.getElementById('courSearchClear').style.display = 'none';
+    document.getElementById('courSearchResults').style.display = 'none';
+    renderUnassigned();
+    showCourList();
+    rebuildCourList('');
+  });
+});
+
+// ── Back button ───────────────────────────────────────────────────
+document.getElementById('courDetailBack').addEventListener('click', showCourList);
+
+// ── Search bar ────────────────────────────────────────────────────
+const courSearchEl  = document.getElementById('courSearch');
+const courResultsEl = document.getElementById('courSearchResults');
+const courClearBtn  = document.getElementById('courSearchClear');
+
 function renderCourSearch(query) {
   const q = query.trim().toLowerCase();
   if (!q) { courResultsEl.style.display = 'none'; return; }
-  const pool    = semFiltered(ALL_COURSES_DATA);
+  const pool    = semFiltered(COUR_BASE_SORTED);
   const matches = pool.filter(c =>
     c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)
   ).slice(0, 14);
@@ -1899,8 +2030,7 @@ function renderCourSearch(query) {
     courResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2">No courses found</div>';
   } else {
     courResultsEl.innerHTML = matches.map(c =>
-      `<button type="button" class="list-group-item list-group-item-action py-2 cour-result-item"
-         data-id="${c.id}">
+      `<button type="button" class="list-group-item list-group-item-action py-2 cour-result-item" data-id="${c.id}">
          <span class="badge bg-primary me-1">${c.code}</span>
          <span>${c.title}</span>
          <span class="text-muted ms-2 small">${c.programme_code} · Yr ${c.study_year} · Sem ${c.semester}</span>
@@ -1911,8 +2041,10 @@ function renderCourSearch(query) {
 }
 
 courSearchEl.addEventListener('input', function() {
-  renderCourSearch(this.value);
-  courClearBtn.style.display = this.value ? '' : 'none';
+  const q = this.value;
+  courClearBtn.style.display = q ? '' : 'none';
+  rebuildCourList(q);       // updates paginated list live
+  renderCourSearch(q);      // also shows dropdown suggestions
 });
 
 courSearchEl.addEventListener('focus', function() {
@@ -1929,14 +2061,14 @@ courClearBtn.addEventListener('click', function() {
   courSearchEl.value = '';
   courClearBtn.style.display = 'none';
   courResultsEl.style.display = 'none';
-  document.getElementById('courMgmtContent').style.display = 'none';
+  showCourList();
+  rebuildCourList('');
 });
 
 courResultsEl.addEventListener('click', async function(e) {
   const btn = e.target.closest('.cour-result-item');
   if (!btn) return;
-  const cid = btn.dataset.id;
-  const c   = ALL_COURSES_DATA.find(x => x.id == cid);
+  const c = ALL_COURSES_DATA.find(x => x.id == btn.dataset.id);
   if (!c) return;
   courSearchEl.value = c.code + ' — ' + c.title;
   courClearBtn.style.display = '';
@@ -1945,9 +2077,8 @@ courResultsEl.addEventListener('click', async function(e) {
 });
 
 async function loadCourseDetail(c) {
-  const content = document.getElementById('courMgmtContent');
-  content.style.display = 'block';
-  content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showCourDetail();
+  document.getElementById('courMgmtContent').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Info card
   document.getElementById('cInfCode').textContent  = c.code;
