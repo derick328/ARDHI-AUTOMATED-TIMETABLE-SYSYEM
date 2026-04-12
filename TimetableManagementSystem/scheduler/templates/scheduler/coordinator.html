@@ -785,6 +785,37 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         </div>
       </div>
 
+      <!-- Paginated lecturer list -->
+      <div id="lectListPanel">
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="bi bi-people me-2"></i>All Lecturers
+              <span class="badge bg-secondary ms-1" id="lectTotalBadge">0</span>
+            </span>
+            <span class="text-muted small" id="lectPageInfo"></span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm mb-0">
+                <thead class="table-dark">
+                  <tr><th>#</th><th>Name</th><th>Email</th><th>Type</th><th>Courses</th></tr>
+                </thead>
+                <tbody id="lectListBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-between align-items-center py-2">
+            <button class="btn btn-sm btn-outline-secondary" id="lectPrevBtn" disabled>
+              <i class="bi bi-chevron-left"></i> Prev
+            </button>
+            <div id="lectPagNums" class="d-flex gap-1 flex-wrap justify-content-center"></div>
+            <button class="btn btn-sm btn-outline-secondary" id="lectNextBtn" disabled>
+              Next <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      </div><!-- /lectListPanel -->
+
       <!-- Content (shown after selection) -->
       <div id="lectMgmtContent" style="display:none">
 
@@ -792,7 +823,12 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <span><i class="bi bi-person-circle me-2"></i><span id="lectMgmtName" class="fw-bold"></span></span>
-            <span class="badge bg-light text-dark" id="lectMgmtType"></span>
+            <div class="d-flex gap-2 align-items-center">
+              <span class="badge bg-light text-dark" id="lectMgmtType"></span>
+              <button class="btn btn-sm btn-outline-light" id="lectBackBtn">
+                <i class="bi bi-arrow-left me-1"></i>Back to list
+              </button>
+            </div>
           </div>
           <div class="card-body">
             <div class="text-muted small mb-3" id="lectMgmtEmail"></div>
@@ -994,7 +1030,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
     <!-- Embedded data for JS (lecturer & course management) -->
     <script>
     const ALL_COURSES_DATA = [
-      {% for c in courses %}{"id":{{ c.id }},"code":"{{ c.code|escapejs }}","title":"{{ c.title|escapejs }}","programme_id":{{ c.programme.id }},"programme_code":"{{ c.programme.code|escapejs }}","programme_name":"{{ c.programme.name|escapejs }}","study_year":{{ c.study_year }},"semester":{{ c.semester }},"lecturer_id":{{ c.lecturer_id|default:"null" }},"lecturer_name":"{{ c.lecturer.name|default:''|escapejs }}","is_lab":{{ c.is_lab|yesno:'true,false' }},"is_exam":{{ c.is_exam|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}
+      {% for c in courses %}{"id":{{ c.id }},"code":"{{ c.code|escapejs }}","title":"{{ c.title|escapejs }}","programme_id":{{ c.programme.id }},"programme_code":"{{ c.programme.code|escapejs }}","programme_name":"{{ c.programme.name|escapejs }}","study_year":{{ c.study_year }},"semester":{{ c.semester }},"lecturer_id":{{ c.lecturer_id|default:"null" }},"lecturer_name":"{{ c.lecturer.name|default:''|escapejs }}","is_lab":{{ c.is_lab|yesno:'true,false' }},"is_exam":{{ c.is_exam|yesno:'true,false' }},"merge_group":{% if c.merge_group %}"{{ c.merge_group|escapejs }}"{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}
       {% endfor %}
     ];
     const ALL_LECTURERS_DATA = [
@@ -1608,10 +1644,83 @@ function parseHours(t) {
   return parseInt(parts[0], 10) + parseInt(parts[1], 10) / 60;
 }
 
-// Search input wiring
-const lectSearchEl      = document.getElementById('lectSearch');
-const lectResultsEl     = document.getElementById('lectSearchResults');
-const lectClearBtn      = document.getElementById('lectSearchClear');
+// ── Paginated lecturer list ───────────────────────────────────────
+const LECT_PAGE_SIZE = 10;
+let lectCurrentPage  = 1;
+let lectFilteredList = [...ALL_LECTURERS_DATA];
+
+function showLectList() {
+  document.getElementById('lectListPanel').style.display   = 'block';
+  document.getElementById('lectMgmtContent').style.display = 'none';
+}
+function showLectDetail() {
+  document.getElementById('lectListPanel').style.display   = 'none';
+  document.getElementById('lectMgmtContent').style.display = 'block';
+}
+
+function renderLectPage(page) {
+  lectCurrentPage = page;
+  const total     = lectFilteredList.length;
+  const pages     = Math.max(1, Math.ceil(total / LECT_PAGE_SIZE));
+  const start     = (page - 1) * LECT_PAGE_SIZE;
+  const slice     = lectFilteredList.slice(start, start + LECT_PAGE_SIZE);
+
+  document.getElementById('lectTotalBadge').textContent = total;
+  document.getElementById('lectPageInfo').textContent   =
+    total === 0 ? 'No results' : `Showing ${start + 1}–${Math.min(start + LECT_PAGE_SIZE, total)} of ${total}`;
+
+  const tbody = document.getElementById('lectListBody');
+  if (slice.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No lecturers found.</td></tr>';
+  } else {
+    tbody.innerHTML = slice.map((l, i) => {
+      const courseCount = ALL_COURSES_DATA.filter(c => c.lecturer_id === l.id).length;
+      return `<tr class="lect-list-row" role="button" style="cursor:pointer"
+                data-id="${l.id}" data-name="${l.name.replace(/"/g,'&quot;')}"
+                data-email="${l.email.replace(/"/g,'&quot;')}" data-fulltime="${l.full_time}">
+        <td class="text-muted">${start + i + 1}</td>
+        <td><strong>${l.name}</strong></td>
+        <td class="small text-muted">${l.email}</td>
+        <td>${l.full_time ? '<span class="badge bg-success">Full-time</span>' : '<span class="badge bg-secondary">Part-time</span>'}</td>
+        <td>${courseCount > 0 ? `<span class="badge bg-primary">${courseCount}</span>` : '<span class="text-muted small">0</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Pagination number buttons
+  const pagNums = document.getElementById('lectPagNums');
+  pagNums.innerHTML = '';
+  const maxBtns = 7;
+  let startP = Math.max(1, page - Math.floor(maxBtns / 2));
+  let endP   = Math.min(pages, startP + maxBtns - 1);
+  if (endP - startP < maxBtns - 1) startP = Math.max(1, endP - maxBtns + 1);
+  for (let p = startP; p <= endP; p++) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm ' + (p === page ? 'btn-primary' : 'btn-outline-secondary');
+    btn.textContent = p;
+    btn.addEventListener('click', () => renderLectPage(p));
+    pagNums.appendChild(btn);
+  }
+
+  document.getElementById('lectPrevBtn').disabled = page <= 1;
+  document.getElementById('lectNextBtn').disabled = page >= pages;
+}
+
+document.getElementById('lectPrevBtn').addEventListener('click', () => renderLectPage(lectCurrentPage - 1));
+document.getElementById('lectNextBtn').addEventListener('click', () => renderLectPage(lectCurrentPage + 1));
+
+document.getElementById('lectListBody').addEventListener('click', async function(e) {
+  const row = e.target.closest('.lect-list-row');
+  if (!row) return;
+  await loadLecturerDetail(row.dataset.id, row.dataset.name, row.dataset.email, row.dataset.fulltime);
+});
+
+document.getElementById('lectBackBtn').addEventListener('click', showLectList);
+
+// ── Search input wiring ───────────────────────────────────────────
+const lectSearchEl  = document.getElementById('lectSearch');
+const lectResultsEl = document.getElementById('lectSearchResults');
+const lectClearBtn  = document.getElementById('lectSearchClear');
 
 function renderLectResults(query) {
   const q = query.trim().toLowerCase();
@@ -1634,8 +1743,15 @@ function renderLectResults(query) {
 }
 
 lectSearchEl.addEventListener('input', function() {
-  renderLectResults(this.value);
+  const q = this.value.trim().toLowerCase();
   lectClearBtn.style.display = this.value ? '' : 'none';
+  // Filter the paginated list live
+  lectFilteredList = q
+    ? ALL_LECTURERS_DATA.filter(l => l.name.toLowerCase().includes(q))
+    : [...ALL_LECTURERS_DATA];
+  renderLectPage(1);
+  // Also show dropdown suggestions
+  renderLectResults(this.value);
 });
 
 lectSearchEl.addEventListener('focus', function() {
@@ -1652,25 +1768,29 @@ lectClearBtn.addEventListener('click', function() {
   lectSearchEl.value = '';
   lectClearBtn.style.display = 'none';
   lectResultsEl.style.display = 'none';
-  document.getElementById('lectMgmtContent').style.display = 'none';
+  lectFilteredList = [...ALL_LECTURERS_DATA];
+  renderLectPage(1);
+  showLectList();
 });
 
 lectResultsEl.addEventListener('click', async function(e) {
   const btn = e.target.closest('.lect-result-item');
   if (!btn) return;
-  const lid = btn.dataset.id;
   lectSearchEl.value = btn.dataset.name;
   lectClearBtn.style.display = '';
   lectResultsEl.style.display = 'none';
-  await loadLecturerDetail(lid, btn.dataset.name, btn.dataset.email, btn.dataset.fulltime);
+  await loadLecturerDetail(btn.dataset.id, btn.dataset.name, btn.dataset.email, btn.dataset.fulltime);
 });
 
+// Initial render
+renderLectPage(1);
+
 async function loadLecturerDetail(lid, name, email, fulltime) {
-  const content = document.getElementById('lectMgmtContent');
+  showLectDetail();
   document.getElementById('lectMgmtName').textContent  = name;
   document.getElementById('lectMgmtEmail').innerHTML   = '<i class="bi bi-envelope me-1"></i>' + email;
   document.getElementById('lectMgmtType').textContent  = fulltime === 'true' ? 'Full-time' : 'Part-time';
-  content.style.display = 'block';
+  document.getElementById('lectMgmtContent').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Assigned courses (client-side filter)
   const assigned = ALL_COURSES_DATA.filter(c => c.lecturer_id == lid);
@@ -1844,27 +1964,69 @@ async function loadCourseDetail(c) {
     ? typeBadges.join(' ')
     : '<span class="badge bg-light text-dark">Lecture</span>';
 
-  // Student intake
-  const key = `${c.programme_id}_${c.study_year}`;
-  const sc  = STUDENT_COUNTS_MAP[key];
-  document.getElementById('courStudentsBody').innerHTML = sc
-    ? `<tr>
-        <td><span class="badge bg-secondary">${sc.prog_code}</span></td>
-        <td>${sc.prog_name}</td>
-        <td>Year ${c.study_year}</td>
-        <td>${sc.male}</td>
-        <td>${sc.female}</td>
-        <td><strong>${sc.total}</strong></td>
-      </tr>`
-    : '<tr><td colspan="6" class="text-center text-muted py-3">No student count data for this programme and year.</td></tr>';
+  // Student intake placeholder while schedule loads
+  document.getElementById('courStudentsBody').innerHTML =
+    '<tr><td colspan="6" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</td></tr>';
 
-  // Schedule
+  // Schedule + student intake (both derived from timetable entries)
   document.getElementById('courScheduleSpinner').style.display = 'block';
   document.getElementById('courScheduleWrap').style.display    = 'none';
   document.getElementById('courScheduleEmpty').style.display   = 'none';
   try {
     const entries = await fetch(`/api/timetable-entries/?format=json&course=${c.id}`)
       .then(r => r.json());
+
+    // ── Student Intake ────────────────────────────────────────────
+    // Collect all programme IDs that actually attend this course:
+    //  1. from timetable entries (most accurate — covers shared courses)
+    //  2. from merge_group siblings in ALL_COURSES_DATA (works before timetable is generated)
+    //  3. always include the course's own programme as a fallback
+    const progIdSet = new Set();
+    progIdSet.add(c.programme_id);
+
+    // merge_group siblings
+    if (c.merge_group) {
+      ALL_COURSES_DATA
+        .filter(x => x.merge_group === c.merge_group)
+        .forEach(x => progIdSet.add(x.programme_id));
+    }
+
+    // timetable entry programmes
+    entries.forEach(e => progIdSet.add(e.programme));
+
+    const studBody = document.getElementById('courStudentsBody');
+    const intakeRows = [];
+    let grandTotal = 0;
+    progIdSet.forEach(pid => {
+      const key = `${pid}_${c.study_year}`;
+      const sc  = STUDENT_COUNTS_MAP[key];
+      if (sc) {
+        grandTotal += sc.total;
+        intakeRows.push(`<tr>
+          <td><span class="badge bg-secondary">${sc.prog_code}</span></td>
+          <td>${sc.prog_name}</td>
+          <td>Year ${c.study_year}</td>
+          <td>${sc.male}</td>
+          <td>${sc.female}</td>
+          <td><strong>${sc.total}</strong></td>
+        </tr>`);
+      }
+    });
+
+    if (intakeRows.length === 0) {
+      studBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No student count data found for this course.</td></tr>';
+    } else {
+      studBody.innerHTML = intakeRows.join('') +
+        (intakeRows.length > 1
+          ? `<tr class="table-secondary fw-bold">
+               <td colspan="3">Total across all programmes</td>
+               <td colspan="2"></td>
+               <td>${grandTotal}</td>
+             </tr>`
+          : '');
+    }
+
+    // ── Schedule ──────────────────────────────────────────────────
     document.getElementById('courScheduleSpinner').style.display = 'none';
     if (entries.length === 0) {
       document.getElementById('courScheduleEmpty').style.display = 'block';
@@ -1886,6 +2048,8 @@ async function loadCourseDetail(c) {
     }
   } catch (err) {
     document.getElementById('courScheduleSpinner').style.display = 'none';
+    document.getElementById('courStudentsBody').innerHTML =
+      '<tr><td colspan="6" class="text-center text-danger py-3">Failed to load data.</td></tr>';
     document.getElementById('courScheduleEmpty').innerHTML =
       '<div class="alert alert-danger mx-3">Failed to load schedule data.</div>';
     document.getElementById('courScheduleEmpty').style.display = 'block';
