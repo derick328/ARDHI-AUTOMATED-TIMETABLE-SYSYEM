@@ -1608,34 +1608,85 @@ function parseHours(t) {
   return parseInt(parts[0], 10) + parseInt(parts[1], 10) / 60;
 }
 
-document.getElementById('lectSelect').addEventListener('change', async function() {
-  const lid = this.value;
-  const content = document.getElementById('lectMgmtContent');
-  if (!lid) { content.style.display = 'none'; return; }
+// Search input wiring
+const lectSearchEl      = document.getElementById('lectSearch');
+const lectResultsEl     = document.getElementById('lectSearchResults');
+const lectClearBtn      = document.getElementById('lectSearchClear');
 
-  const opt = this.selectedOptions[0];
-  document.getElementById('lectMgmtName').textContent  = opt.dataset.name;
-  document.getElementById('lectMgmtEmail').innerHTML   = '<i class="bi bi-envelope me-1"></i>' + opt.dataset.email;
-  document.getElementById('lectMgmtType').textContent  = opt.dataset.fulltime === 'true' ? 'Full-time' : 'Part-time';
+function renderLectResults(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { lectResultsEl.style.display = 'none'; return; }
+  const matches = ALL_LECTURERS_DATA.filter(l => l.name.toLowerCase().includes(q)).slice(0, 12);
+  if (matches.length === 0) {
+    lectResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2">No lecturers found</div>';
+  } else {
+    lectResultsEl.innerHTML = matches.map(l =>
+      `<button type="button" class="list-group-item list-group-item-action py-2 lect-result-item"
+         data-id="${l.id}" data-name="${l.name.replace(/"/g,'&quot;')}"
+         data-email="${l.email.replace(/"/g,'&quot;')}" data-fulltime="${l.full_time}">
+         <strong>${l.name}</strong>
+         <span class="text-muted ms-2 small">${l.email}</span>
+         ${!l.full_time ? '<span class="badge bg-secondary ms-1">Part-time</span>' : ''}
+       </button>`
+    ).join('');
+  }
+  lectResultsEl.style.display = 'block';
+}
+
+lectSearchEl.addEventListener('input', function() {
+  renderLectResults(this.value);
+  lectClearBtn.style.display = this.value ? '' : 'none';
+});
+
+lectSearchEl.addEventListener('focus', function() {
+  if (this.value.trim()) renderLectResults(this.value);
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#lectSearch') && !e.target.closest('#lectSearchResults')) {
+    lectResultsEl.style.display = 'none';
+  }
+});
+
+lectClearBtn.addEventListener('click', function() {
+  lectSearchEl.value = '';
+  lectClearBtn.style.display = 'none';
+  lectResultsEl.style.display = 'none';
+  document.getElementById('lectMgmtContent').style.display = 'none';
+});
+
+lectResultsEl.addEventListener('click', async function(e) {
+  const btn = e.target.closest('.lect-result-item');
+  if (!btn) return;
+  const lid = btn.dataset.id;
+  lectSearchEl.value = btn.dataset.name;
+  lectClearBtn.style.display = '';
+  lectResultsEl.style.display = 'none';
+  await loadLecturerDetail(lid, btn.dataset.name, btn.dataset.email, btn.dataset.fulltime);
+});
+
+async function loadLecturerDetail(lid, name, email, fulltime) {
+  const content = document.getElementById('lectMgmtContent');
+  document.getElementById('lectMgmtName').textContent  = name;
+  document.getElementById('lectMgmtEmail').innerHTML   = '<i class="bi bi-envelope me-1"></i>' + email;
+  document.getElementById('lectMgmtType').textContent  = fulltime === 'true' ? 'Full-time' : 'Part-time';
   content.style.display = 'block';
 
   // Assigned courses (client-side filter)
   const assigned = ALL_COURSES_DATA.filter(c => c.lecturer_id == lid);
   document.getElementById('statCoursesCount').textContent = assigned.length;
   const tbody = document.getElementById('lectCoursesBody');
-  if (assigned.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No courses assigned to this lecturer.</td></tr>';
-  } else {
-    tbody.innerHTML = assigned.map(c =>
-      `<tr>
-        <td><strong>${c.code}</strong></td>
-        <td>${c.title}</td>
-        <td><span class="badge bg-secondary">${c.programme_code}</span></td>
-        <td>Year ${c.study_year}</td>
-        <td>Sem ${c.semester}</td>
-      </tr>`
-    ).join('');
-  }
+  tbody.innerHTML = assigned.length === 0
+    ? '<tr><td colspan="5" class="text-center text-muted py-3">No courses assigned to this lecturer.</td></tr>'
+    : assigned.map(c =>
+        `<tr>
+          <td><strong>${c.code}</strong></td>
+          <td>${c.title}</td>
+          <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+          <td>Year ${c.study_year}</td>
+          <td>Sem ${c.semester}</td>
+        </tr>`
+      ).join('');
 
   // Timetable entries (API fetch)
   document.getElementById('lectTimetableSpinner').style.display = 'block';
@@ -1650,11 +1701,9 @@ document.getElementById('lectSelect').addEventListener('change', async function(
     const totalHours = teaching.reduce(
       (sum, e) => sum + parseHours(e.timeslot_end) - parseHours(e.timeslot_start), 0
     );
-
     document.getElementById('statSessionsCount').textContent = teaching.length;
-    document.getElementById('statHoursCount').textContent    = totalHours % 1 === 0
-      ? totalHours + 'h'
-      : totalHours.toFixed(1) + 'h';
+    document.getElementById('statHoursCount').textContent    =
+      totalHours % 1 === 0 ? totalHours + 'h' : totalHours.toFixed(1) + 'h';
 
     document.getElementById('lectTimetableSpinner').style.display = 'none';
     if (entries.length === 0) {
@@ -1682,56 +1731,140 @@ document.getElementById('lectSelect').addEventListener('change', async function(
       '<div class="alert alert-danger mx-3">Failed to load timetable data.</div>';
     document.getElementById('lectTimetableEmpty').style.display = 'block';
   }
-});
+}
 
 // ── Course Management ─────────────────────────────────────────────
-document.getElementById('courSelect').addEventListener('change', async function() {
-  const cid = this.value;
-  const content = document.getElementById('courMgmtContent');
-  if (!cid) { content.style.display = 'none'; return; }
+let courActiveSem = 0;   // 0 = all, 1 = sem1, 2 = sem2
 
-  const opt = this.selectedOptions[0];
+// Semester tab switching
+document.querySelectorAll('#courSemTabs .nav-link').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#courSemTabs .nav-link').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    courActiveSem = parseInt(this.dataset.sem, 10);
+    // Re-render search results if query is active
+    const q = document.getElementById('courSearch').value;
+    if (q.trim()) renderCourSearch(q);
+    // Re-render unassigned list
+    renderUnassigned();
+    // Hide detail panel when semester changes
+    document.getElementById('courMgmtContent').style.display = 'none';
+    document.getElementById('courSearch').value = '';
+    document.getElementById('courSearchClear').style.display = 'none';
+    document.getElementById('courSearchResults').style.display = 'none';
+  });
+});
+
+// Back button
+document.getElementById('courDetailBack').addEventListener('click', function() {
+  document.getElementById('courMgmtContent').style.display = 'none';
+});
+
+const courSearchEl  = document.getElementById('courSearch');
+const courResultsEl = document.getElementById('courSearchResults');
+const courClearBtn  = document.getElementById('courSearchClear');
+
+function semFiltered(courses) {
+  return courActiveSem === 0 ? courses : courses.filter(c => c.semester === courActiveSem);
+}
+
+function renderCourSearch(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { courResultsEl.style.display = 'none'; return; }
+  const pool    = semFiltered(ALL_COURSES_DATA);
+  const matches = pool.filter(c =>
+    c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)
+  ).slice(0, 14);
+  if (matches.length === 0) {
+    courResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2">No courses found</div>';
+  } else {
+    courResultsEl.innerHTML = matches.map(c =>
+      `<button type="button" class="list-group-item list-group-item-action py-2 cour-result-item"
+         data-id="${c.id}">
+         <span class="badge bg-primary me-1">${c.code}</span>
+         <span>${c.title}</span>
+         <span class="text-muted ms-2 small">${c.programme_code} · Yr ${c.study_year} · Sem ${c.semester}</span>
+       </button>`
+    ).join('');
+  }
+  courResultsEl.style.display = 'block';
+}
+
+courSearchEl.addEventListener('input', function() {
+  renderCourSearch(this.value);
+  courClearBtn.style.display = this.value ? '' : 'none';
+});
+
+courSearchEl.addEventListener('focus', function() {
+  if (this.value.trim()) renderCourSearch(this.value);
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#courSearch') && !e.target.closest('#courSearchResults')) {
+    courResultsEl.style.display = 'none';
+  }
+});
+
+courClearBtn.addEventListener('click', function() {
+  courSearchEl.value = '';
+  courClearBtn.style.display = 'none';
+  courResultsEl.style.display = 'none';
+  document.getElementById('courMgmtContent').style.display = 'none';
+});
+
+courResultsEl.addEventListener('click', async function(e) {
+  const btn = e.target.closest('.cour-result-item');
+  if (!btn) return;
+  const cid = btn.dataset.id;
+  const c   = ALL_COURSES_DATA.find(x => x.id == cid);
+  if (!c) return;
+  courSearchEl.value = c.code + ' — ' + c.title;
+  courClearBtn.style.display = '';
+  courResultsEl.style.display = 'none';
+  await loadCourseDetail(c);
+});
+
+async function loadCourseDetail(c) {
+  const content = document.getElementById('courMgmtContent');
   content.style.display = 'block';
+  content.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Info card
-  document.getElementById('cInfCode').textContent  = opt.dataset.code;
-  document.getElementById('cInfTitle').textContent = opt.dataset.title;
+  document.getElementById('cInfCode').textContent  = c.code;
+  document.getElementById('cInfTitle').textContent = c.title;
   document.getElementById('cInfProg').innerHTML    =
-    `<span class="badge bg-secondary me-1">${opt.dataset.programmeCode}</span>${opt.dataset.programmeName}`;
-  document.getElementById('cInfYear').textContent  = 'Year ' + opt.dataset.year;
-  document.getElementById('cInfSem').textContent   = 'Semester ' + opt.dataset.semester;
-  document.getElementById('cInfLect').textContent  = opt.dataset.lecturer || '— Unassigned —';
+    `<span class="badge bg-secondary me-1">${c.programme_code}</span>${c.programme_name}`;
+  document.getElementById('cInfYear').textContent  = 'Year ' + c.study_year;
+  document.getElementById('cInfSem').textContent   = 'Semester ' + c.semester;
+  document.getElementById('cInfLect').textContent  = c.lecturer_name || '— Unassigned —';
   const typeBadges = [];
-  if (opt.dataset.isLab  === 'true') typeBadges.push('<span class="badge bg-info text-dark">Lab</span>');
-  if (opt.dataset.isExam === 'true') typeBadges.push('<span class="badge bg-dark">Exam</span>');
-  document.getElementById('cInfType').innerHTML = typeBadges.length ? typeBadges.join(' ') : '<span class="badge bg-light text-dark">Lecture</span>';
+  if (c.is_lab)  typeBadges.push('<span class="badge bg-info text-dark">Lab</span>');
+  if (c.is_exam) typeBadges.push('<span class="badge bg-dark">Exam</span>');
+  document.getElementById('cInfType').innerHTML = typeBadges.length
+    ? typeBadges.join(' ')
+    : '<span class="badge bg-light text-dark">Lecture</span>';
 
-  // Student intake (from embedded map)
-  const key = `${opt.dataset.programme}_${opt.dataset.year}`;
+  // Student intake
+  const key = `${c.programme_id}_${c.study_year}`;
   const sc  = STUDENT_COUNTS_MAP[key];
-  const studBody = document.getElementById('courStudentsBody');
-  if (sc) {
-    studBody.innerHTML = `<tr>
-      <td><span class="badge bg-secondary">${sc.prog_code}</span></td>
-      <td>${sc.prog_name}</td>
-      <td>Year ${opt.dataset.year}</td>
-      <td>${sc.male}</td>
-      <td>${sc.female}</td>
-      <td><strong>${sc.total}</strong></td>
-    </tr>`;
-  } else {
-    studBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No student count data for this programme and year.</td></tr>';
-  }
+  document.getElementById('courStudentsBody').innerHTML = sc
+    ? `<tr>
+        <td><span class="badge bg-secondary">${sc.prog_code}</span></td>
+        <td>${sc.prog_name}</td>
+        <td>Year ${c.study_year}</td>
+        <td>${sc.male}</td>
+        <td>${sc.female}</td>
+        <td><strong>${sc.total}</strong></td>
+      </tr>`
+    : '<tr><td colspan="6" class="text-center text-muted py-3">No student count data for this programme and year.</td></tr>';
 
-  // Course schedule (API fetch)
+  // Schedule
   document.getElementById('courScheduleSpinner').style.display = 'block';
-  document.getElementById('courScheduleWrap').style.display   = 'none';
-  document.getElementById('courScheduleEmpty').style.display  = 'none';
-
+  document.getElementById('courScheduleWrap').style.display    = 'none';
+  document.getElementById('courScheduleEmpty').style.display   = 'none';
   try {
-    const entries = await fetch(`/api/timetable-entries/?format=json&course=${cid}`)
+    const entries = await fetch(`/api/timetable-entries/?format=json&course=${c.id}`)
       .then(r => r.json());
-
     document.getElementById('courScheduleSpinner').style.display = 'none';
     if (entries.length === 0) {
       document.getElementById('courScheduleEmpty').style.display = 'block';
@@ -1757,7 +1890,30 @@ document.getElementById('courSelect').addEventListener('change', async function(
       '<div class="alert alert-danger mx-3">Failed to load schedule data.</div>';
     document.getElementById('courScheduleEmpty').style.display = 'block';
   }
-});
+}
+
+function renderUnassigned() {
+  const unassigned = semFiltered(ALL_COURSES_DATA).filter(c => c.lecturer_id === null);
+  document.getElementById('courUnassignedCount').textContent = unassigned.length;
+  const tbody = document.getElementById('courUnassignedBody');
+  if (unassigned.length === 0) {
+    const semLabel = courActiveSem === 0 ? '' : ` in Semester ${courActiveSem}`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-success py-3"><i class="bi bi-check-circle me-1"></i>All courses${semLabel} have a lecturer assigned.</td></tr>`;
+  } else {
+    tbody.innerHTML = unassigned.map(c =>
+      `<tr>
+        <td><strong>${c.code}</strong></td>
+        <td>${c.title}</td>
+        <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+        <td>Year ${c.study_year}</td>
+        <td>Sem ${c.semester}</td>
+      </tr>`
+    ).join('');
+  }
+}
+
+// Initial render of unassigned list
+renderUnassigned();
 </script>
 
 {% endblock %}
