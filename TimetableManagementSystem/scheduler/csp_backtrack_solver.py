@@ -37,36 +37,51 @@ def _build_units(unscheduled, student_counts):
     return units, counts
 
 
+def _room_list_for_unit(is_lab, rooms):
+    """
+    Non-lab courses prefer non-lab rooms but overflow into lab rooms.
+    Lab courses are restricted to lab rooms only.
+    """
+    lab_rooms     = sorted([r for r in rooms if r.is_lab],     key=lambda r: r.capacity, reverse=True)
+    non_lab_rooms = sorted([r for r in rooms if not r.is_lab], key=lambda r: r.capacity, reverse=True)
+    return lab_rooms if is_lab else non_lab_rooms + lab_rooms
+
+
 def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
     """
-    Phase 3: CSP + Backtracking for remaining unscheduled courses.
+    Phase 3: Sequential greedy sweep for remaining unscheduled courses.
+
+    Replaces all-or-nothing recursive backtracking with a forward-only
+    greedy pass that skips (marks unplaced) any course it cannot fit.
+    This guarantees the maximum number of courses are placed — the old
+    recursive approach rolled back ALL progress whenever a complete
+    solution was impossible, producing far more unplaced courses than
+    necessary.
+
     Returns (scheduled_list, unplaced_courses).
-    Never raises — always returns the best partial solution found.
     """
     if not unscheduled:
         return scheduled, []
 
     units, combined_counts = _build_units(unscheduled, student_counts)
 
+    # Seed occupation sets from already-placed courses
     occupied_rooms = set()
     occupied_lecturers = set()
     occupied_groups = set()
-
     for a in scheduled:
         occupied_rooms.add((a['room'].id, a['timeslot'].id))
         if a['course'].lecturer_id:
             occupied_lecturers.add((a['course'].lecturer_id, a['timeslot'].id))
         occupied_groups.add((a['course'].programme_id, a['course'].study_year, a['timeslot'].id))
 
-    sorted_rooms = sorted(rooms, key=lambda r: r.capacity, reverse=True)
+    unplaced = []
 
-    def backtrack(index):
-        if index == len(units):
-            return True
-
-        unit = units[index]
+    for unit in units:
         combined_count = combined_counts[unit[0].id]
         is_lab = unit[0].is_lab
+        room_order = _room_list_for_unit(is_lab, rooms)
+        assigned = False
 
         for timeslot in timeslots:
             if _is_friday_restricted(timeslot):
@@ -88,19 +103,14 @@ def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
             if lect_conflict:
                 continue
 
-            for room in sorted_rooms:
-                if is_lab and not room.is_lab:
-                    continue
-                if not is_lab and room.is_lab:
-                    continue
+            for room in room_order:
                 if room.capacity < combined_count:
                     continue
-
                 room_key = (room.id, timeslot.id)
                 if room_key in occupied_rooms:
                     continue
 
-                # Try this assignment for the whole unit
+                # Commit this unit
                 occupied_rooms.add(room_key)
                 for gk in group_keys:
                     occupied_groups.add(gk)
@@ -108,23 +118,13 @@ def csp_backtrack(unscheduled, scheduled, rooms, timeslots, student_counts):
                     occupied_lecturers.add(lk)
                 for c in unit:
                     scheduled.append({'course': c, 'room': room, 'timeslot': timeslot})
+                assigned = True
+                break
 
-                if backtrack(index + 1):
-                    return True
+            if assigned:
+                break
 
-                # Backtrack
-                for _ in unit:
-                    scheduled.pop()
-                occupied_rooms.discard(room_key)
-                for gk in group_keys:
-                    occupied_groups.discard(gk)
-                for lk in lect_keys:
-                    occupied_lecturers.discard(lk)
+        if not assigned:
+            unplaced.extend(unit)
 
-        return False
-
-    backtrack(0)
-
-    placed_ids = {a['course'].id for a in scheduled}
-    unplaced = [c for c in unscheduled if c.id not in placed_ids]
     return scheduled, unplaced

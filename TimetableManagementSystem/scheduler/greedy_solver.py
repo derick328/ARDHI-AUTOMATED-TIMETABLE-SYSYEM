@@ -57,11 +57,28 @@ def _build_merge_groups(ordered_courses, student_counts):
     return units, combined_counts
 
 
+def _room_list_for_unit(is_lab, rooms):
+    """
+    Return rooms in preference order for a unit:
+      - Lab courses  : lab rooms only (by capacity desc)
+      - Non-lab courses: non-lab rooms first, then lab rooms as overflow
+        (lab rooms are never wasted — they can host regular lectures if needed)
+    """
+    lab_rooms     = sorted([r for r in rooms if r.is_lab],     key=lambda r: r.capacity, reverse=True)
+    non_lab_rooms = sorted([r for r in rooms if not r.is_lab], key=lambda r: r.capacity, reverse=True)
+    if is_lab:
+        return lab_rooms
+    return non_lab_rooms + lab_rooms   # prefer non-lab, fall back to lab
+
+
 def greedy_assign(ordered_courses, rooms, timeslots, student_counts):
     """
     Phase 2: Greedy first-pass assignment.
     Supports merge groups — courses sharing the same merge_group value
     are assigned the same room + timeslot (combined student count used).
+
+    Non-lab courses try non-lab rooms first; if none fit they overflow into
+    lab rooms so that large lab spaces are never left idle.
 
     Returns:
         scheduled: list of assignment dicts {'course', 'room', 'timeslot'}
@@ -74,14 +91,13 @@ def greedy_assign(ordered_courses, rooms, timeslots, student_counts):
     occupied_lecturers = set()   # (lecturer_id, timeslot_id)
     occupied_groups = set()      # (programme_id, study_year, timeslot_id)
 
-    sorted_rooms = sorted(rooms, key=lambda r: r.capacity, reverse=True)
-
     units, combined_counts = _build_merge_groups(ordered_courses, student_counts)
 
     for unit in units:
         leader = unit[0]
         combined_count = combined_counts[leader.id]
         is_lab = leader.is_lab
+        room_order = _room_list_for_unit(is_lab, rooms)
 
         assigned = False
 
@@ -109,11 +125,7 @@ def greedy_assign(ordered_courses, rooms, timeslots, student_counts):
             if lect_conflict:
                 continue
 
-            for room in sorted_rooms:
-                if is_lab and not room.is_lab:
-                    continue
-                if not is_lab and room.is_lab:
-                    continue
+            for room in room_order:
                 # Room must fit the COMBINED student count
                 if room.capacity < combined_count:
                     continue
