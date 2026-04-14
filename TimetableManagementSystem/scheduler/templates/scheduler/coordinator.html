@@ -864,7 +864,7 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
             <div class="table-responsive">
               <table class="table table-sm table-striped mb-0">
                 <thead class="table-dark">
-                  <tr><th>Code</th><th>Title</th><th>Programme</th><th>Year</th><th>Sem</th></tr>
+                  <tr><th>Code</th><th>Title</th><th>Programme(s)</th><th>Year</th><th>Sem</th></tr>
                 </thead>
                 <tbody id="lectCoursesBody">
                   <tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr>
@@ -1828,17 +1828,30 @@ async function loadLecturerDetail(lid, name, email, fulltime) {
   document.getElementById('lectMgmtType').textContent  = fulltime === 'true' ? 'Full-time' : 'Part-time';
   document.getElementById('lectMgmtContent').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  // Assigned courses (client-side filter)
+  // Assigned courses (client-side filter) — group by code+year+sem so shared courses appear once
   const assigned = ALL_COURSES_DATA.filter(c => c.lecturer_id == lid);
-  document.getElementById('statCoursesCount').textContent = assigned.length;
+  // Build a map keyed by "code|study_year|semester" to merge programmes
+  const assignedMap = new Map();
+  assigned.forEach(c => {
+    const key = `${c.code}|${c.study_year}|${c.semester}`;
+    if (!assignedMap.has(key)) {
+      assignedMap.set(key, { ...c, programmes: [] });
+    }
+    if (c.programme_code) assignedMap.get(key).programmes.push(c.programme_code);
+  });
+  const assignedUnique = [...assignedMap.values()];
+  document.getElementById('statCoursesCount').textContent = assignedUnique.length;
   const tbody = document.getElementById('lectCoursesBody');
-  tbody.innerHTML = assigned.length === 0
+  tbody.innerHTML = assignedUnique.length === 0
     ? '<tr><td colspan="5" class="text-center text-muted py-3">No courses assigned to this lecturer.</td></tr>'
-    : assigned.map(c =>
+    : assignedUnique.map(c =>
         `<tr>
           <td><strong>${c.code}</strong></td>
           <td>${c.title}</td>
-          <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+          <td>${c.programmes.length
+            ? c.programmes.map(p => `<span class="badge bg-secondary me-1">${p}</span>`).join('')
+            : '<span class="text-muted small">—</span>'
+          }</td>
           <td>Year ${c.study_year}</td>
           <td>Sem ${c.semester}</td>
         </tr>`
@@ -1910,6 +1923,22 @@ const COUR_BASE_SORTED = [...ALL_COURSES_DATA].sort((a, b) => {
   return diff !== 0 ? diff : a.code.localeCompare(b.code);
 });
 
+// ── Deduplicated list: one entry per code+year+sem, all programmes collected ──
+function buildDeduped(list) {
+  const map = new Map();
+  list.forEach(c => {
+    const key = `${c.code}|${c.study_year}|${c.semester}`;
+    if (!map.has(key)) map.set(key, { ...c, progCodes: [], progNames: [] });
+    const entry = map.get(key);
+    if (c.programme_code && !entry.progCodes.includes(c.programme_code)) {
+      entry.progCodes.push(c.programme_code);
+      entry.progNames.push(c.programme_name || '');
+    }
+  });
+  return [...map.values()];
+}
+const COUR_DEDUPED = buildDeduped(COUR_BASE_SORTED);
+
 function semFiltered(courses) {
   return courActiveSem === 0 ? courses : courses.filter(c => c.semester === courActiveSem);
 }
@@ -1925,7 +1954,7 @@ function showCourDetail() {
 
 function rebuildCourList(query) {
   const q    = (query || '').trim().toLowerCase();
-  const pool = semFiltered(COUR_BASE_SORTED);
+  const pool = semFiltered(COUR_DEDUPED);
   courFilteredList = q
     ? pool.filter(c => c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q))
     : pool;
@@ -1955,11 +1984,14 @@ function renderCourPage(page) {
       const lectCell = c.lecturer_name
         ? `<span class="small">${c.lecturer_name}</span>`
         : `<span class="badge bg-warning text-dark small">Unassigned</span>`;
+      const progBadges = c.progCodes.length
+        ? c.progCodes.map(p => `<span class="badge bg-secondary me-1">${p}</span>`).join('')
+        : `<span class="badge bg-secondary">${c.programme_code}</span>`;
       return `<tr class="cour-list-row" role="button" style="cursor:pointer" data-id="${c.id}">
         <td class="text-muted">${start + i + 1}</td>
         <td><strong>${c.code}</strong></td>
         <td class="small">${c.title}</td>
-        <td><span class="badge bg-secondary">${c.programme_code}</span></td>
+        <td>${progBadges}</td>
         <td>${c.study_year}</td>
         <td>${c.semester}</td>
         <td class="text-center">${progBadge}</td>
@@ -2022,20 +2054,21 @@ const courClearBtn  = document.getElementById('courSearchClear');
 function renderCourSearch(query) {
   const q = query.trim().toLowerCase();
   if (!q) { courResultsEl.style.display = 'none'; return; }
-  const pool    = semFiltered(COUR_BASE_SORTED);
+  const pool    = semFiltered(COUR_DEDUPED);
   const matches = pool.filter(c =>
     c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)
   ).slice(0, 14);
   if (matches.length === 0) {
     courResultsEl.innerHTML = '<div class="list-group-item text-muted small py-2">No courses found</div>';
   } else {
-    courResultsEl.innerHTML = matches.map(c =>
-      `<button type="button" class="list-group-item list-group-item-action py-2 cour-result-item" data-id="${c.id}">
+    courResultsEl.innerHTML = matches.map(c => {
+      const progsLabel = c.progCodes.length ? c.progCodes.join(', ') : (c.programme_code || '');
+      return `<button type="button" class="list-group-item list-group-item-action py-2 cour-result-item" data-id="${c.id}">
          <span class="badge bg-primary me-1">${c.code}</span>
          <span>${c.title}</span>
-         <span class="text-muted ms-2 small">${c.programme_code} · Yr ${c.study_year} · Sem ${c.semester}</span>
-       </button>`
-    ).join('');
+         <span class="text-muted ms-2 small">${progsLabel} · Yr ${c.study_year} · Sem ${c.semester}</span>
+       </button>`;
+    }).join('');
   }
   courResultsEl.style.display = 'block';
 }
