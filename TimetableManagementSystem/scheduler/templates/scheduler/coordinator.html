@@ -986,7 +986,16 @@ body{background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif}
                 <table class="table table-sm mb-0">
                   <tr><th class="text-muted" style="width:38%">Code</th><td id="cInfCode" class="fw-bold"></td></tr>
                   <tr><th class="text-muted">Title</th><td id="cInfTitle"></td></tr>
-                  <tr><th class="text-muted">Programme</th><td id="cInfProg"></td></tr>
+                  <tr>
+                    <th class="text-muted">Programme</th>
+                    <td>
+                      <span id="cInfProgCount"></span>
+                      <button id="cInfProgToggle" class="btn btn-link btn-sm p-0 ms-2 text-decoration-none" style="display:none" type="button">
+                        Show programmes
+                      </button>
+                      <div id="cInfProg" class="mt-1" style="display:none"></div>
+                    </td>
+                  </tr>
                   <tr><th class="text-muted">Study Year</th><td id="cInfYear"></td></tr>
                   <tr><th class="text-muted">Semester</th><td id="cInfSem"></td></tr>
                 </table>
@@ -2124,11 +2133,27 @@ async function loadCourseDetail(c) {
 
   document.getElementById('cInfCode').textContent  = c.code;
   document.getElementById('cInfTitle').textContent = c.title;
-  document.getElementById('cInfProg').innerHTML    = _progEntries.length
+
+  // Programme: show count + collapsible list
+  const _count = _progEntries.length || 1;
+  const _progCountEl  = document.getElementById('cInfProgCount');
+  const _progToggleEl = document.getElementById('cInfProgToggle');
+  const _progListEl   = document.getElementById('cInfProg');
+  _progCountEl.innerHTML = `<span class="badge bg-primary">${_count}</span> degree programme${_count !== 1 ? 's' : ''}`;
+  _progListEl.innerHTML  = _progEntries.length
     ? _progEntries.map(([code, name]) =>
-        `<span class="badge bg-secondary me-1">${code}</span><span class="me-3 small">${name}</span>`
+        `<div><span class="badge bg-secondary me-1">${code}</span><span class="small">${name}</span></div>`
       ).join('')
-    : `<span class="badge bg-secondary me-1">${c.programme_code}</span>${c.programme_name || ''}`;
+    : `<div><span class="badge bg-secondary me-1">${c.programme_code}</span><span class="small">${c.programme_name || ''}</span></div>`;
+  _progListEl.style.display  = 'none';
+  _progToggleEl.textContent  = 'Show programmes';
+  _progToggleEl.style.display = '';
+  _progToggleEl.onclick = function() {
+    const open = _progListEl.style.display !== 'none';
+    _progListEl.style.display = open ? 'none' : 'block';
+    _progToggleEl.textContent = open ? 'Show programmes' : 'Hide programmes';
+  };
+
   document.getElementById('cInfYear').textContent  = 'Year ' + c.study_year;
   document.getElementById('cInfSem').textContent   = 'Semester ' + c.semester;
   document.getElementById('cInfLect').textContent  = c.lecturer_name || '— Unassigned —';
