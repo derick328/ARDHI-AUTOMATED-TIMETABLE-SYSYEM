@@ -2114,10 +2114,21 @@ async function loadCourseDetail(c) {
   document.getElementById('courMgmtContent').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // Info card
+  // Collect all siblings (same course code + year + sem) for multi-programme display
+  const _siblings = ALL_COURSES_DATA.filter(
+    x => x.code === c.code && x.study_year === c.study_year && x.semester === c.semester
+  );
+  const _progMap = new Map();
+  _siblings.forEach(s => { if (s.programme_code) _progMap.set(s.programme_code, s.programme_name || ''); });
+  const _progEntries = [..._progMap.entries()];
+
   document.getElementById('cInfCode').textContent  = c.code;
   document.getElementById('cInfTitle').textContent = c.title;
-  document.getElementById('cInfProg').innerHTML    =
-    `<span class="badge bg-secondary me-1">${c.programme_code}</span>${c.programme_name}`;
+  document.getElementById('cInfProg').innerHTML    = _progEntries.length
+    ? _progEntries.map(([code, name]) =>
+        `<span class="badge bg-secondary me-1">${code}</span><span class="me-3 small">${name}</span>`
+      ).join('')
+    : `<span class="badge bg-secondary me-1">${c.programme_code}</span>${c.programme_name || ''}`;
   document.getElementById('cInfYear').textContent  = 'Year ' + c.study_year;
   document.getElementById('cInfSem').textContent   = 'Semester ' + c.semester;
   document.getElementById('cInfLect').textContent  = c.lecturer_name || '— Unassigned —';
