@@ -65,11 +65,15 @@ def _build_merge_groups(ordered_courses, student_counts):
 def _build_shared_timeslot_groups(singles_flat, student_counts):
     """
     Among courses with no merge_group, group those sharing
-    (code, study_year, semester). Groups of 2+ become shared-timeslot units;
-    true singles remain as individual [course] lists.
+    (code, study_year, semester) AND coming from DIFFERENT programmes.
+
+    Only ONE representative per programme enters a shared-timeslot unit
+    (prefer the base section, i.e. section == '').  Extra sections of the
+    same programme are placed individually so they land at DIFFERENT
+    timeslots and never cause student-group or lecturer conflicts.
 
     Returns:
-      shared_units — list of lists, each with 2+ courses (same code/year/sem)
+      shared_units — list of lists, each with 2+ courses from distinct programmes
       single_units — list of [course] lists (one entry per list)
     """
     buckets = defaultdict(list)
@@ -80,15 +84,28 @@ def _build_shared_timeslot_groups(singles_flat, student_counts):
     shared_units = []
     single_units = []
     for group in buckets.values():
-        if len(group) >= 2:
-            # Largest student count first — hardest-to-room entry picked first
-            group.sort(
-                key=lambda c: student_counts.get((c.programme_id, c.study_year), 0),
-                reverse=True,
-            )
-            shared_units.append(group)
+        # Pick one representative per programme (base section first)
+        prog_seen = {}
+        extras    = []
+        for c in sorted(group, key=lambda x: x.section or ''):
+            if c.programme_id not in prog_seen:
+                prog_seen[c.programme_id] = c
+            else:
+                extras.append(c)
+
+        representatives = list(prog_seen.values())
+        representatives.sort(
+            key=lambda c: student_counts.get((c.programme_id, c.study_year), 0),
+            reverse=True,
+        )
+
+        if len(representatives) >= 2:
+            shared_units.append(representatives)
         else:
-            single_units.append(group)
+            single_units.extend([[c] for c in representatives])
+
+        # Extra sections (section B, C …) always scheduled independently
+        single_units.extend([[c] for c in extras])
 
     # Most-programme groups first (most constrained)
     shared_units.sort(key=lambda g: len(g), reverse=True)
@@ -108,22 +125,27 @@ def _try_place_shared_group(group, timeslots, rooms, student_counts,
         if _is_friday_restricted(timeslot):
             continue
 
-        candidate_rooms = {}   # course.id → Room
-        temp_rooms      = set()  # rooms tentatively claimed in this attempt
+        candidate_rooms = {}    # course.id → Room
+        temp_rooms      = set() # rooms tentatively claimed this attempt
+        temp_groups     = set() # student groups tentatively claimed this attempt
+        temp_lecturers  = set() # lecturers tentatively claimed this attempt
         all_ok          = True
 
         for c in group:
             sc = student_counts.get((c.programme_id, c.study_year), 0)
+            gk = (c.programme_id, c.study_year, timeslot.id)
 
-            # Student-group conflict?
-            if (c.programme_id, c.study_year, timeslot.id) in occupied_groups:
+            # Student-group conflict (global or within this attempt)?
+            if gk in occupied_groups or gk in temp_groups:
                 all_ok = False
                 break
 
-            # Lecturer conflict?
-            if c.lecturer_id and (c.lecturer_id, timeslot.id) in occupied_lecturers:
-                all_ok = False
-                break
+            # Lecturer conflict (global or within this attempt)?
+            if c.lecturer_id:
+                lk = (c.lecturer_id, timeslot.id)
+                if lk in occupied_lecturers or lk in temp_lecturers:
+                    all_ok = False
+                    break
 
             # Find the best available room for this single entry
             found = None
@@ -142,6 +164,9 @@ def _try_place_shared_group(group, timeslots, rooms, student_counts,
                 break
 
             candidate_rooms[c.id] = found
+            temp_groups.add(gk)
+            if c.lecturer_id:
+                temp_lecturers.add((c.lecturer_id, timeslot.id))
 
         if all_ok:
             # Commit all entries to the chosen timeslot
